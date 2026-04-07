@@ -99,6 +99,7 @@ def evaluate_pair(gfs_path, gfs_var, siata_path, siata_var):
     
     mse_gfs  = mean_squared_error(y_b_true, gfs_aligned)
     skill_gfs = np.nan if mse_base == 0 else 1 - mse_gfs / mse_base
+    mse  = mean_squared_error(y_true, y_pred)
     rmse = np.sqrt(mse)
     mae  = mean_absolute_error(y_true, y_pred)
     r2   = r2_score(y_true, y_pred)
