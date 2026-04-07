@@ -11,6 +11,7 @@ Created on 2025-04-21
 import os
 import xarray as xr
 import numpy as np
+import pandas as pd
 
 
 class GFSThresholdClipper:
@@ -73,7 +74,7 @@ class GFSThresholdClipper:
     
         # (3) Ersetzen von Überschreitungen mit Wochen-Durchschnitt + Jitter
         # Um die Woche zu extrahieren, nutzen wir `observation_time`
-        weekly_mean = self.gfs_da.groupby(self.gfs_da.coords['observation_time'].dt.week).mean("observation_time")
+        weekly_mean = self.gfs_da.groupby(pd.Grouper(freq="W")).mean("observation_time")
         
         # Hinzufügen von Jitter (+- 3%)
         jitter = np.random.uniform(-jitter_range, jitter_range, size=weekly_mean.shape)
