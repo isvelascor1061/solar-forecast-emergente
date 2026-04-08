@@ -106,14 +106,18 @@ class HourlyConverter:
 
 # ---------------------------------------------------------------------- #
 def main():
+    from config import (
+        MERGED_DSWRF_RAW_0100_DIR, MERGED_DSWRF1_0100_DIR,
+        GFS_VAR_RAW, GFS_VAR_OUT, LAUNCH_TIME_DEFAULT,
+    )
     # ------------ USER SETTINGS ------------------------------------- #
-    INPUT_DIR  = "_2_data_postprocessing/_01_merged_Radrawdata/dswrf/merged_raw_dswrf_0100"
-    OUTPUT_DIR = "_2_data_postprocessing/_02_merged_Rad1data/dswrf/merged_raw_dswrf1_0100"
-    
-    VAR_IN  = "sdswrf"      #name of the variable in the merged files -> all sdswrf
-    VAR_OUT = "dswrf1"      #name of the variable in the output file -> dswrf1 launch time is added in script
-    
-    LAUNCH_TIME = "0100"    # z.B. "0100", "0700", ...
+    INPUT_DIR  = MERGED_DSWRF_RAW_0100_DIR
+    OUTPUT_DIR = MERGED_DSWRF1_0100_DIR
+
+    VAR_IN  = GFS_VAR_RAW   # nombre de la variable en los archivos mergeados
+    VAR_OUT = GFS_VAR_OUT   # nombre de la variable en el archivo de salida
+
+    LAUNCH_TIME = LAUNCH_TIME_DEFAULT    # z.B. "0100", "0700", ...
         # ---------------------------------------------------------------- #
 
     conv = HourlyConverter(INPUT_DIR, OUTPUT_DIR, VAR_IN, VAR_OUT)

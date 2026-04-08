@@ -144,17 +144,21 @@ class DSWRF1Merger:
 
 
 if __name__ == "__main__":
+    from config import MERGED_DSWRF1_1900_DIR, DSWRF1_UNCLIPPED_DIR
+
+    # Define el launch time a procesar en esta ejecución (ajustar según corresponda)
+    launch_time = "1900"
+
     # Set the paths for the input and output folders
-    input_folder = "_2_data_postprocessing/_02_merged_Rad1data/dswrf/merged_raw_dswrf1_1900"
-    output_folder = "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/Unclipped_merged_dswrf1"
+    input_folder = MERGED_DSWRF1_1900_DIR
+    output_folder = DSWRF1_UNCLIPPED_DIR
 
     # Define the launch time and the variable name
-    launch_time = "1900"
     variable_name = f"dswrf1_{launch_time}"
 
     # Define the file pattern for the input files
     file_pattern = f"dswrf1_*{launch_time}.nc"
-    
+
     # Set the output filename
     output_filename = f"dswrf1_{launch_time}.nc"
 

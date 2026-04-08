@@ -13,6 +13,10 @@ import pandas as pd
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
+from config import (
+    DSWRF1_CSI_0100_FILE, SIATA_GHI_FILE, SIATA_GHI_VAR,
+    TEST_INDICES_COMPARISON_FILE,
+)
 
 # -----------------------------------------------------------
 #    Deutsches Zahlformat (Tausender-Punkt, Dezimal-Komma)
@@ -29,14 +33,14 @@ def fmt_de(value, prec=5):
 # 1)  Dateipaare (beliebig erweiterbar)
 # -----------------------------------------------------------
 PAIRS = [
-    ("_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_0100.nc",
+    (DSWRF1_CSI_0100_FILE,
      "dswrf1_0100",
-     "_3_Data_preparation_for_LSTM/Preparation_data/_03_Siata_GHI/Netcdf_Siata_GHI/GHI_CSI_clipped.nc",
-     "GHI_clean",
+     SIATA_GHI_FILE,
+     SIATA_GHI_VAR,
      "GFS-DSWRF1  vs  SIATA-GHI")
 ]
 
-TEST_IDX_FILE = Path("_4_LSTM_modules/test_indices/test_indices_multfeat_caus24_CSI_0100.npy")
+TEST_IDX_FILE = Path(TEST_INDICES_COMPARISON_FILE)
 SUBSET_COORDS = None
 USE_AREA_MEAN = True
 

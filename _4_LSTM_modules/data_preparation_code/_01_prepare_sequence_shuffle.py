@@ -35,64 +35,60 @@ import numpy as np
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from scipy.stats import pearsonr
 from sklearn.model_selection import train_test_split
+from config import (
+    LAUNCH_TIMES,
+    FEAT_KC_TEMPLATE, FEAT_KS_TEMPLATE, FEAT_DSWRF1_TEMPLATE, FEAT_DLWRF_TEMPLATE,
+    FEAT_TMP_TEMPLATE, FEAT_RH_TEMPLATE, FEAT_CAPE_TEMPLATE, FEAT_HPBL_TEMPLATE,
+    FEAT_PWAT_TEMPLATE, FEAT_TCDC_TEMPLATE, FEAT_HCDC_TEMPLATE, FEAT_MCDC_TEMPLATE,
+    FEAT_LCDC_TEMPLATE, FEAT_HGT_TEMPLATE, FEAT_WIND10M_TEMPLATE, FEAT_SUNSD_TEMPLATE,
+    SIATA_CSI_FILE, SIATA_CSI_VAR,
+    SEQ_MODE, K_LEFT, K_RIGHT, OFF, K, VAL_SPLIT, TEST_SPLIT, SHUFFLE_SEED,
+    INCLUDE_STEP, INCLUDE_DAYFLAG, ADD_HOD, ADD_DOY, ADD_ZENITH,
+    LAT, LON, FLAG_START, FLAG_END,
+    SEQ_NPZ_TEST_FILE, TEST_INDICES_FILE,
+)
 
 # ============ USER CONFIG =============================
-launch_times = ["0100","0700","1300","1900"]
+launch_times = LAUNCH_TIMES
 
 feat_templates = [
         # --- Indices, already normalized 0-1 -----------------------------------------------
-       ("kc",  "_3_Data_preparation_for_LSTM/Preparation_data/_04_indices/clear_sky_indices/clearsky_index_GFS_{LT}.nc",  "clearsky_index_GFS_{LT}",  "none"),
-       ("ks",  "_3_Data_preparation_for_LSTM/Preparation_data/_04_indices/clearness_indices/clearness_index_GFS_{LT}.nc", "clearness_index_GFS_{LT}",  "none"),
+       (“kc”,       FEAT_KC_TEMPLATE,     “clearsky_index_GFS_{LT}”,  “none”),
+       (“ks”,       FEAT_KS_TEMPLATE,     “clearness_index_GFS_{LT}”, “none”),
        # --- Radiation -----------------------------------------------------------
-       ("dswrf1",  "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/Unclipped_merged_dswrf1/dswrf1_{LT}.nc",              "dswrf1_{LT}",              "min_max"),
-       ("dlwrf1",  "_3_Data_preparation_for_LSTM/Preparation_data/_12_DLWRF/dlwrf1_{LT}.nc",                               "dlwrf1_{LT}",              "auto"),
+       (“dswrf1”,   FEAT_DSWRF1_TEMPLATE, “dswrf1_{LT}”,              “min_max”),
+       (“dlwrf1”,   FEAT_DLWRF_TEMPLATE,  “dlwrf1_{LT}”,              “auto”),
        # --- Atmosphere ----------------------------------------------------------
-       ("TMP_surface",  "_3_Data_preparation_for_LSTM/Preparation_data/_05_Temp_surface/TMP_surface_{LT}.nc",              "TMP_surface_{LT}",            "auto"),
-       ("RH_2m",  "_3_Data_preparation_for_LSTM/Preparation_data/_06_RH_2m/RH_2m_{LT}.nc",                                  "RH_2m_{LT}",                  "auto"),
-       ("CAPE_surface",  "_3_Data_preparation_for_LSTM/Preparation_data/_10_CAPE_surface/CAPE_surface_{LT}.nc",             "CAPE_surface_{LT}",            "auto"),
-       ("HPBL_surface",  "_3_Data_preparation_for_LSTM/Preparation_data/_11_HPBL/HPBL_surface_{LT}.nc",                     "HPBL_surface_{LT}",            "auto"),
-       ("PWAT_ent",      "_3_Data_preparation_for_LSTM/Preparation_data/_13_PWAT_ent/PWAT_ent_{LT}.nc",                     "PWAT_ent_{LT}",            "min_max"),
+       (“TMP_surface”,      FEAT_TMP_TEMPLATE,  “TMP_surface_{LT}”,      “auto”),
+       (“RH_2m”,            FEAT_RH_TEMPLATE,   “RH_2m_{LT}”,            “auto”),
+       (“CAPE_surface”,     FEAT_CAPE_TEMPLATE,  “CAPE_surface_{LT}”,     “auto”),
+       (“HPBL_surface”,     FEAT_HPBL_TEMPLATE,  “HPBL_surface_{LT}”,     “auto”),
+       (“PWAT_ent”,         FEAT_PWAT_TEMPLATE,  “PWAT_ent_{LT}”,         “min_max”),
        # --- Clouds & Visibility ------------------------------------------------------
-       ("TCDC_ent",  "_3_Data_preparation_for_LSTM/Preparation_data/_07_CDC_ent/_01_TCDC/TCDC_ent_{LT}.nc",              "TCDC_ent_{LT}",            "min_max"),
-       ("HCDC_ent",  "_3_Data_preparation_for_LSTM/Preparation_data/_07_CDC_ent/_02_HCDC/HCDC_high_{LT}.nc",              "HCDC_high_{LT}",            "min_max"),
-       ("MCDC_ent",  "_3_Data_preparation_for_LSTM/Preparation_data/_07_CDC_ent/_03_MCDC/MCDC_mid_{LT}.nc",              "MCDC_mid_{LT}",            "min_max"),
-       ("LCDC_ent",  "_3_Data_preparation_for_LSTM/Preparation_data/_07_CDC_ent/_04_LCDC/LCDC_low_{LT}.nc",              "LCDC_low_{LT}",            "min_max"),
-       ("HGT_cloud_ceiling",  "_3_Data_preparation_for_LSTM/Preparation_data/_08_HGT_cloud_ceiling/HGT_cloud_ceiling_{LT}.nc",     "HGT_cloud_ceiling_{LT}",  "auto"),
+       (“TCDC_ent”,         FEAT_TCDC_TEMPLATE,  “TCDC_ent_{LT}”,         “min_max”),
+       (“HCDC_ent”,         FEAT_HCDC_TEMPLATE,  “HCDC_high_{LT}”,        “min_max”),
+       (“MCDC_ent”,         FEAT_MCDC_TEMPLATE,  “MCDC_mid_{LT}”,         “min_max”),
+       (“LCDC_ent”,         FEAT_LCDC_TEMPLATE,  “LCDC_low_{LT}”,         “min_max”),
+       (“HGT_cloud_ceiling”,FEAT_HGT_TEMPLATE,   “HGT_cloud_ceiling_{LT}”,”auto”),
        # --- Windspeed -----------------------------------------------------------------
-       ("Wind10m",  "_3_Data_preparation_for_LSTM/Preparation_data/_09_Wind10m/Wind10m_{LT}.nc",              "Wind10m_{LT}",            "min_max"),
+       (“Wind10m”,          FEAT_WIND10M_TEMPLATE,”Wind10m_{LT}”,          “min_max”),
        # --- Duration of sunshine ---------------------------------------------------
-       ("SUNSD_minutes",  "_3_Data_preparation_for_LSTM/Preparation_data/_11_SUNSD/SUNSD_minutes_{LT}.nc",              "SUNSD_minutes_{LT}",            "min_max"),
+       (“SUNSD_minutes”,    FEAT_SUNSD_TEMPLATE,  “SUNSD_minutes_{LT}”,    “min_max”),
        ]
 
-target_path = "_3_Data_preparation_for_LSTM/Preparation_data/_04_indices/clear_sky_indices/clearsky_index_Siata.nc"
-target_var = "clearsky_index_Siata"
-target_norm = "none"
+target_path = SIATA_CSI_FILE
+target_var  = SIATA_CSI_VAR
+target_norm = “none”
 
 
 # Sequence parameters -------------------------------------------------
-SEQ_MODE = "symmetric"          # "symmetric" or "causal"
-K_LEFT = 24                      # hours back in time
-K_RIGHT = 24                     # hours into the future (ignored if causal)
-OFF = None                       # target offset inside symmetric window
-K = 24                           # history length if causal
-VAL_SPLIT = 0.15
-TEST_SPLIT = 0.15
-SHUFFLE_SEED = 16               
-
-# Extra “meta” channels ----------------------------------------------
-INCLUDE_STEP = True
-INCLUDE_DAYFLAG = False
-add_hod = False
-add_doy = False
-add_zenith = True
-LAT = 6.25                       # Medellín important for zenith calculation 
-LON = -75.5
-FLAG_START = 19                  # local civil night start hour not important if dayflag is set to false
-FLAG_END = 6                     # local civil night end hour not important if dayflag is set to false
+add_hod    = ADD_HOD
+add_doy    = ADD_DOY
+add_zenith = ADD_ZENITH
 
 # Output files --------------------------------------------------------
-OUT_NPZ = "_4_LSTM_modules/Prepared_data/4launch_multfeat_test"
-indice_filepath = "_4_LSTM_modules/test_indices/test_indices_4launch_multfeat_test"
+OUT_NPZ         = SEQ_NPZ_TEST_FILE
+indice_filepath = TEST_INDICES_FILE
 
 # =======================================================
 

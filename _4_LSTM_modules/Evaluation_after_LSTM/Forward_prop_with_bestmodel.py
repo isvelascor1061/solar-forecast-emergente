@@ -31,26 +31,25 @@ from pathlib import Path
 # -----------------------------------------------------------------------
 # File paths & runtime settings
 # -----------------------------------------------------------------------
-NPZ_FILE   = "_4_LSTM_modules/Prepared_data/4launch_multfeat_sym24.npz"
-MODEL_FILE = "_4_LSTM_modules/_runs/4launch_multfeat_sym/4launch_Multfeat_sym24_numl3_hidden96_20250701_153709/best_model.pt"
-CSV_OUT    = "_4_LSTM_modules/Evaluation/Sym24_predictions_full.csv"
+from config import (
+    SEQ_NPZ_FILE, BEST_MODEL_FILE, CSV_OUT,
+    CSI_GHI_FILE, CSI_VAR_NAME,
+    N_FEAT, HIDDEN, NUM_LAYERS, DROPOUT, BATCH_SIZE,
+)
+
+NPZ_FILE   = SEQ_NPZ_FILE
+MODEL_FILE = BEST_MODEL_FILE
 
 # Descaling specification: (NetCDF-path, method, variable)
 DESCALER   = (
-    "_3_Data_preparation_for_LSTM/Preparation_data/_01_CSI_EXT_radiation/Ineichen_GHI/"
-    "CSI_GHI_grid25_avg_with_horizon_and_enhancement_with_bias_correct2.nc",
+    CSI_GHI_FILE,
     "physical",              # "physical"   or "minmax"
-    "clear_sky_ghi",         # variable name inside the NetCDF
+    CSI_VAR_NAME,            # variable name inside the NetCDF
 )
 
 # ---------------- Hyper-parameters (identical to training) -----------------
-N_FEAT      = 69
-HIDDEN      = 96
-NUM_LAYERS  = 3
-DROPOUT     = 0.25
 SEQ_LEN     = None          # auto-detect from first batch
 DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
-BATCH_SIZE  = 128
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------

@@ -151,8 +151,9 @@ if __name__ == "__main__":
     - Specifies the variable pattern to match the NetCDF files.
     - Calls the merging process.
     """
-    INPUT_DIR = "_1_data_acquisition/_02_raw_MultGFS_data/raw_MultGFS_0100"
-    OUTPUT_FILE = "_2_data_postprocessing/_03_Merged_MultGFS_data/MultGFS_0100_2.nc"
+    from config import RAW_MULTGFS_0100_DIR, MERGED_MULTGFS_0100_FILE
+    INPUT_DIR = RAW_MULTGFS_0100_DIR
+    OUTPUT_FILE = MERGED_MULTGFS_0100_FILE
     FILE_PATTERN = "*.nc"  # The file pattern for the NetCDF files to be merged
 
     # Initialize the HourlyObservationMerger with the directories and variable pattern

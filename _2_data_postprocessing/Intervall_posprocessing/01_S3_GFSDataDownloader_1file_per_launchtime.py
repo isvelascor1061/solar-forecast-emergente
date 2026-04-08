@@ -1,6 +1,7 @@
 from pathlib import Path
 import xarray as xr
 import pandas as pd
+from config import RAW_DSWRF_0100_DIR, MERGED_DSWRF_RAW_0100_DIR, GFS_VAR_RAW
 
 class GFSDataMerger:
     """
@@ -94,9 +95,9 @@ def main():
     It reads the raw NetCDF files, merges them by launch time, and saves the merged files.
     """
     # Set the input and output directories, and specify the variable to merge
-    input_dir = "_1_data_acquisition/_01_raw_rad_data/dswrf/raw_dswrf_0100"
-    output_dir = "_2_data_postprocessing/_01_merged_Radrawdata/dswrf/merged_raw_dswrf_0100"
-    variable_name = "sdswrf"  # Example: Specify the variable to merge
+    input_dir = RAW_DSWRF_0100_DIR
+    output_dir = MERGED_DSWRF_RAW_0100_DIR
+    variable_name = GFS_VAR_RAW
 
     # Initialize the GFSDataMerger object
     merger = GFSDataMerger(input_dir, output_dir, variable_name=variable_name)

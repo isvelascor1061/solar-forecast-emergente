@@ -179,26 +179,25 @@ class NetCDFDataCleaner:
 
 # ----------------------------------------------------------------------
 if __name__ == "__main__":
-    launch_time="1900"  # Example launch time (can be any valid launch time such as 0100, 0600, 1200, 1800)
-    GFS_PATH = (
-        f"_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/Unclipped_merged_dswrf1/dswrf1_{launch_time}.nc"
-    )  # Path to the GFS NetCDF file
-    CSI_PATH = (
-        "_3_Data_preparation_for_LSTM/Preparation_data/_01_CSI_EXT_radiation/Extraterrestrial_GHI/EXT_GHI_all.nc"
-    )  # Path to the CSI (clear-sky index) NetCDF file
-    OUT_DIR = (
-        "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_EXT_clipped"
-    )  # Directory to save the cleaned NetCDF file
-    OUT_FILE = f"dswrf1_EXT_{launch_time}.nc"  # Output filename
+    from config import (
+        DSWRF1_UNCLIPPED_DIR, EXT_GHI_FILE, DSWRF1_EXT_DIR,
+        EXT_VAR_NAME, CLIP_MIN_DEN, CLIP_SEED,
+    )
+
+    launch_time = "1900"  # Launch time a procesar (0100, 0700, 1300 o 1900)
+    GFS_PATH = f"{DSWRF1_UNCLIPPED_DIR}/dswrf1_{launch_time}.nc"   # Radiación GFS sin cortar
+    CSI_PATH = EXT_GHI_FILE                                         # Radiación extraterrestre
+    OUT_DIR  = DSWRF1_EXT_DIR                                       # Carpeta de salida
+    OUT_FILE = f"dswrf1_EXT_{launch_time}.nc"                       # Nombre del archivo de salida
 
     # Initialize the NetCDFDataCleaner object with necessary parameters
     cleaner = NetCDFDataCleaner(
         gfs_path=GFS_PATH,
         csi_path=CSI_PATH,
         gfs_var=f"dswrf1_{launch_time}",
-        csi_var="extraterrestrial_ghi",
-        min_den=2,  # Minimum value threshold for the cleaned data
-        seed=42,  # Random seed for jitter factor
+        csi_var=EXT_VAR_NAME,
+        min_den=CLIP_MIN_DEN,   # Umbral mínimo de radiación
+        seed=CLIP_SEED,         # Semilla para el jitter
     )
     
     # Process the data and save the cleaned NetCDF file
