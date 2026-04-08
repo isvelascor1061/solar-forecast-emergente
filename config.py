@@ -160,6 +160,18 @@ FEAT_SUNSD_TEMPLATE       = f"{PREP_DATA_DIR}/_11_SUNSD/SUNSD_minutes_{{LT}}.nc"
 CLIP_MIN_DEN = 2    # Umbral mínimo (W/m²): valores por debajo se fijan a 0
 CLIP_SEED    = 42   # Semilla aleatoria para el jitter al reemplazar excedencias
 
+# --- Archivo de elevación y perfil de horizonte --------------------
+# Raster TIF descargado de OpenTopography para la celda de Medellín
+HORIZON_FILE    = "_3_Data_preparation_for_LSTM/Preparation_data/Elevation_data/Medellin.tif"
+# Directorio de salida de la radiación de cielo despejado Ineichen
+CSI_GHI_OUT_DIR = f"{PREP_DATA_DIR}/_01_CSI_EXT_radiation/Ineichen_GHI"
+
+# --- Parámetros de corrección de sesgo zenital (bias correction) ---
+# El modelo Ineichen subestima la GHI a ángulos cenitales altos (> 60°)
+ZENITH_CORR      = True    # Activar corrección de sesgo zenital (True/False)
+ZENITH_ALPHA     = 0.003   # Factor de incremento por grado de cénit (0.3 % por grado)
+ZENITH_THRESHOLD = 60      # Ángulo cenital a partir del cual se aplica la corrección
+
 
 # ===================================================================
 # _4_LSTM_modules  –  Red neuronal Bi-LSTM
