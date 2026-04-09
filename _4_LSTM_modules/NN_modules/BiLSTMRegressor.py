@@ -23,6 +23,7 @@ class BiLSTMRegressor(nn.Module):
         seq_len: int | None = None,
         num_layers: int = 2,
         dropout: float = 0.2,
+        activation: str = "sigmoid",
     ):
         super().__init__()
         # --------------- Store hyper-parameters -----------------
@@ -31,6 +32,7 @@ class BiLSTMRegressor(nn.Module):
         self.seq_len    = seq_len          # may be None → set inside forward
         self.num_layers = num_layers
         self.dropout_p  = dropout
+        self.activation = activation       # "sigmoid" o "linear"
         
         # -------------- LayerNorm (NEW) ------------------------
         self.pre_norm = nn.LayerNorm(n_feat)
@@ -69,4 +71,7 @@ class BiLSTMRegressor(nn.Module):
         h_bwd = h_n[-1]                        # (B, hidden)
 
         pooled = self.post_do(torch.cat([h_fwd, h_bwd], dim=1))
-        return torch.sigmoid(self.fc(pooled)).squeeze(-1)   # (B,) in (0, 1)
+        out = self.fc(pooled).squeeze(-1)                   # (B,)
+        if self.activation == "sigmoid":
+            return torch.sigmoid(out)                       # salida acotada (0, 1)
+        return out                                          # "linear": sin activación

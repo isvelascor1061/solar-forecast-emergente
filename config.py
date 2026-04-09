@@ -217,7 +217,7 @@ BATCH_SIZE = 128    # Tamaño de batch para inferencia y entrenamiento
 
 
 # ===================================================================
-# PARÁMETROS DE ENTRENAMIENTO
+# PARÁMETROS DE ENTRENAMIENTO Y COMPORTAMIENTO DEL TRAINER
 # ===================================================================
 
 LR_INIT     = 1e-3   # Tasa de aprendizaje inicial (AdamW)
@@ -227,6 +227,27 @@ L2_LAMBDA   = 10e-4  # Regularización L2 (weight decay en AdamW)
 EARLY_STOP  = 25     # Paciencia de early stopping (épocas sin mejora)
 LR_FACTOR   = 0.5    # Factor de reducción de LR en el scheduler ReduceLROnPlateau
 LR_PATIENCE = 4      # Paciencia del scheduler antes de reducir LR
+
+# Función de activación de salida de la Bi-LSTM
+# "sigmoid" → salida acotada en (0, 1), adecuado cuando el target es el CSI normalizado
+# "linear"  → sin activación, adecuado cuando el target no está normalizado en [0,1]
+ACTIVATION = "sigmoid"
+
+# Método de desescalado para convertir predicciones normalizadas a W/m²
+# "physical" → multiplica por la radiación de cielo despejado del mismo instante
+# "minmax"   → inversa de la normalización min-max
+# "z_score"  → inversa de la estandarización (media=0, std=1)
+# "average"  → inversa de la normalización por media
+DESCALER_METHOD = "physical"
+
+# Aplicar máscara de noche durante el entrenamiento
+# True  → las predicciones nocturnas se fijan a 0 y no contribuyen al gradiente
+# False → el modelo aprende todas las horas por igual (incluyendo la noche)
+USE_DAYMASK = True
+
+# MSE del modelo de referencia GFS (calculado con Comparison_before_NN.py)
+# Se usa para calcular el Skill Score: SS = 1 - MSE_modelo / MSE_GFS
+MSE_BASELINE_R = 22322.349260
 
 
 # ===================================================================
