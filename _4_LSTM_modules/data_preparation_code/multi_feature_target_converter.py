@@ -79,7 +79,7 @@ from datetime import timedelta
 import pvlib
 
 # -----------------------------------------------------------------------------
-# Helperfunktions
+# Helper functions
 # -----------------------------------------------------------------------------
 
 def _parse_hour(lt: str) -> int:
@@ -131,10 +131,10 @@ def _encode_doy(idx: pd.DatetimeIndex) -> xr.Dataset:
 
 # -----------------------------------------------------------------
 # 3) Solar-Zenith-Angle  →  zenith ∈ [0,1]
-#    1 = Sun in zenith (θ = 0°), 0 = Nacht (θ ≥ 90°)
+#    1 = Sun in zenith (θ = 0°), 0 = night (θ ≥ 90°)
 # -----------------------------------------------------------------
 def _solar_zenith(idx, lat, lon):
-    if idx.tz is None:        # tz-naiv → als UTC interpretieren
+    if idx.tz is None:        # tz-naive → interpret as UTC
         idx_aware = idx.tz_localize("UTC").tz_convert("America/Bogota")
     else:
         idx_aware = idx.tz_convert("America/Bogota")
@@ -144,7 +144,7 @@ def _solar_zenith(idx, lat, lon):
     )
     zen_norm = np.clip(1 - sp["apparent_zenith"]/90, 0, 1)
 
-    # ⇓ TZ wieder entfernen, damit alle Arrays gleich sind
+    # ⇓ Remove TZ again so all arrays are consistent
     idx_naive = idx_aware.tz_localize(None)
 
     return xr.DataArray(
@@ -214,11 +214,11 @@ class MultiLaunchTimeLoader:
 
         for tpl in self.feat_tpls:
             if len(tpl) != 4:
-                raise ValueError("feature_templates‑Eintrag muss (alias, path_tpl, var_tpl, norm) sein")
+                raise ValueError("feature_templates entry must be (alias, path_tpl, var_tpl, norm)")
             if tpl[3] not in allowed_norm:
-                raise ValueError(f"Unbekannte Normierung: {tpl[3]}")
+                raise ValueError(f"Unknown normalisation: {tpl[3]}")
         if normalize_target not in allowed_norm:
-            raise ValueError("Unbekannte Target‑Normierung")
+            raise ValueError("Unknown target normalisation")
 
         self.target_path = target_path
         self.target_var = target_var
@@ -316,7 +316,7 @@ class MultiLaunchTimeLoader:
                     feat_das.append(step_da)
                     feat_names.append(f"step_{lt}")
                 else:
-                    print("Step-Feature wird nicht hinzugefügt (include_step=False)")
+                    print("Step feature will not be added (include_step=False)")
     
                 
     
@@ -359,7 +359,7 @@ class MultiLaunchTimeLoader:
         
         if self.add_zenith:
             if self.lat is None or self.lon is None:
-                raise ValueError("lat & lon erforderlich für Zenith-Feature")
+                raise ValueError("lat & lon required for Zenith feature")
             zen_da = _solar_zenith(idx, self.lat, self.lon)
             self.feature_das.append(zen_da)
             self.feature_vars.append("zenith")
@@ -369,7 +369,7 @@ class MultiLaunchTimeLoader:
     # ------------------------------------------------------------------
     def to_dataframe(self, dropna: bool = True) -> pd.DataFrame:
         if self.target_da is None:
-            raise RuntimeError("load() zuerst aufrufen!")
+            raise RuntimeError("Call load() first!")
         series = [da.to_series().rename(n) for da, n in zip(self.feature_das, self.feature_vars)]
         series.append(self.target_da.to_series().rename(self.target_var))
         df = pd.concat(series, axis=1)
@@ -383,7 +383,7 @@ class MultiLaunchTimeLoader:
 
 
 # -----------------------------------------------------------------------------
-# Smoke‑Test
+# Smoke test
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
    
@@ -432,7 +432,7 @@ if __name__ == "__main__":
         add_hod=False,
         add_doy=False,
         add_zenith=True,
-        lat=6.25,          # Medellín-Koordinate
+        lat=6.25,          # Medellín coordinates
         lon=-75.5,
     )
     loader.load()

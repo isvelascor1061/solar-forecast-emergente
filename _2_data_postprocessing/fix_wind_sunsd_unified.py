@@ -3,18 +3,18 @@
 """
 fix_wind_sunsd_unified.py
 =========================
-Unifica fix_wind_sunsd.py y fix_wind_sunsd_and_rename.py en un único script
-configurable por launch time.
+Merges fix_wind_sunsd.py and fix_wind_sunsd_and_rename.py into a single
+script configurable by launch time.
 
-Pasos que realiza:
-  1. Carga el archivo NetCDF MultiGFS del launch time indicado.
-  2. Calcula la velocidad del viento como sqrt(U² + V²) a partir de las
-     componentes UGRD_10m y VGRD_10m.
-  3. Verifica NaNs antes de calcular: si Wind10m ya existe, solo rellena
-     las posiciones con NaN; si no existe, crea la variable desde cero.
-  4. Convierte SUNSD de segundos a minutos con la misma lógica de NaN.
-  5. Elimina las variables UGRD, VGRD y SUNSD_surface del dataset.
-  6. Guarda el resultado como un nuevo archivo NetCDF.
+Steps performed:
+  1. Load the MultiGFS NetCDF file for the specified launch time.
+  2. Compute wind speed as sqrt(U² + V²) from the UGRD_10m and VGRD_10m
+     components.
+  3. Check for NaNs before computing: if Wind10m already exists, only fill
+     the NaN positions; if it does not exist, create the variable from scratch.
+  4. Convert SUNSD from seconds to minutes using the same NaN logic.
+  5. Drop the UGRD, VGRD and SUNSD_surface variables from the dataset.
+  6. Save the result as a new NetCDF file.
 """
 
 import xarray as xr
@@ -24,82 +24,81 @@ from config import MERGED_MULTGFS_DIR, LAUNCH_TIME_DEFAULT
 
 
 # -----------------------------------------------------------------------
-# Parámetro de ejecución — ajustar según el launch time a procesar
+# Execution parameter — adjust according to the launch time to process
 # -----------------------------------------------------------------------
-LAUNCH_TIME = LAUNCH_TIME_DEFAULT   # Ej.: "0100", "0700", "1300", "1900"
+LAUNCH_TIME = LAUNCH_TIME_DEFAULT   # e.g. "0100", "0700", "1300", "1900"
 
 
 def process_netcdf(input_file: str, output_folder: str, output_filename: str,
                    launch_time: str) -> None:
     """
-    Procesa un archivo NetCDF MultiGFS: calcula viento vectorial, convierte
-    SUNSD a minutos y elimina las variables componente.
+    Process a MultiGFS NetCDF file: compute vector wind speed, convert
+    SUNSD to minutes, and drop the component variables.
 
-    Parámetros
+    Parameters
     ----------
-    input_file     : Ruta al archivo NetCDF de entrada.
-    output_folder  : Carpeta donde se guardará el archivo procesado.
-    output_filename: Nombre del archivo de salida.
-    launch_time    : Cadena de hora de lanzamiento (ej. "0100").
+    input_file     : Path to the input NetCDF file.
+    output_folder  : Folder where the processed file will be saved.
+    output_filename: Name of the output file.
+    launch_time    : Launch time string (e.g. "0100").
     """
-    # --- Nombres de variables dependientes del launch time -------------
+    # --- Variable names that depend on the launch time -----------------
     var_wind   = f"Wind10m_{launch_time}"
     var_ugrd   = f"UGRD_10m_{launch_time}"
     var_vgrd   = f"VGRD_10m_{launch_time}"
     var_sunsd_min = f"SUNSD_minutes_{launch_time}"
     var_sunsd_sec = f"SUNSD_surface_{launch_time}"
 
-    # --- Cargar el dataset de entrada ----------------------------------
+    # --- Load the input dataset ----------------------------------------
     ds = xr.open_dataset(input_file)
 
-    # --- Velocidad del viento: sqrt(U² + V²) ---------------------------
-    # Se calcula siempre a partir de las componentes vectoriales para
-    # garantizar consistencia. Si la variable Wind10m ya existe en el
-    # dataset (con posibles NaNs), solo se rellenan las posiciones vacías;
-    # si no existe, se crea desde cero.
+    # --- Wind speed: sqrt(U² + V²) -------------------------------------
+    # Always computed from the vector components to guarantee consistency.
+    # If Wind10m already exists in the dataset (possibly with NaNs), only
+    # fill the missing positions; otherwise create the variable from scratch.
     viento_calculado = np.sqrt(ds[var_ugrd] ** 2 + ds[var_vgrd] ** 2)
 
     if var_wind in ds.data_vars:
-        # La variable existe: verificar NaNs y rellenar solo esas posiciones
+        # Variable exists: check for NaNs and fill only those positions
         mascara_nan = ds[var_wind].isnull()
         ds[var_wind] = ds[var_wind].where(~mascara_nan, viento_calculado)
     else:
-        # La variable no existe: crearla directamente
+        # Variable does not exist: create it directly
         ds[var_wind] = viento_calculado
 
-    # --- Duración de sol: convertir de segundos a minutos --------------
-    # SUNSD_surface almacena la duración en segundos; dividiendo entre 60
-    # obtenemos SUNSD_minutes. Misma lógica de NaN que para el viento.
+    # --- Sunshine duration: convert from seconds to minutes ------------
+    # SUNSD_surface stores the duration in seconds; dividing by 60 gives
+    # SUNSD_minutes. Same NaN logic as for wind speed.
     sunsd_minutos = ds[var_sunsd_sec] / 60
 
     if var_sunsd_min in ds.data_vars:
-        # La variable existe: rellenar solo posiciones con NaN
+        # Variable exists: fill only NaN positions
         mascara_nan_sun = ds[var_sunsd_min].isnull()
         ds[var_sunsd_min] = ds[var_sunsd_min].where(~mascara_nan_sun, sunsd_minutos)
     else:
-        # La variable no existe: crearla directamente
+        # Variable does not exist: create it directly
         ds[var_sunsd_min] = sunsd_minutos
 
-    # --- Eliminar variables componente ya no necesarias ----------------
-    # Las componentes individuales U y V quedan redundantes tras calcular
-    # la magnitud vectorial; SUNSD_surface queda redundante tras la conversión.
+    # --- Drop component variables that are no longer needed ------------
+    # The individual U and V components are redundant after computing the
+    # vector magnitude; SUNSD_surface is redundant after conversion.
     ds = ds.drop_vars([var_ugrd, var_vgrd, var_sunsd_sec])
 
-    # --- Guardar el dataset procesado ----------------------------------
+    # --- Save the processed dataset ------------------------------------
     os.makedirs(output_folder, exist_ok=True)
     output_file = os.path.join(output_folder, output_filename)
     ds.to_netcdf(output_file)
     ds.close()
 
-    print(f"Archivo procesado guardado en: {output_file}")
+    print(f"Processed file saved to: {output_file}")
 
 
 # -----------------------------------------------------------------------
 if __name__ == "__main__":
-    # Ruta de entrada: archivo MultiGFS mergeado para el launch time elegido
+    # Input path: merged MultiGFS file for the chosen launch time
     input_file = os.path.join(MERGED_MULTGFS_DIR, f"MultGFS_{LAUNCH_TIME}.nc")
 
-    # Ruta de salida: misma carpeta, nombre con sufijo "_fixed"
+    # Output path: same folder, filename with "_fixed" suffix
     output_folder   = MERGED_MULTGFS_DIR
     output_filename = f"MultGFS_{LAUNCH_TIME}_fixed.nc"
 

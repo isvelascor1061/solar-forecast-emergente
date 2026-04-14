@@ -3,29 +3,29 @@
 """
 LSTM_trainer.py
 ===============
-Script unificado de entrenamiento de la red Bi-LSTM para predicción
-de irradiancia solar en Medellín (Proyecto Emergente).
+Unified training script for the Bi-LSTM network for solar irradiance
+prediction in Medellín (Proyecto Emergente).
 
-Unifica los 5 scripts anteriores:
+Merges the 5 previous scripts:
     • first_LSTM_test_CSI.py
     • LSTM_test_descaler_linear.py
     • LSTM_test_descaler_sigmoid.py
     • LSTM_test_descalersigmoid_daymask.py
     • LSTM_test_descaler_sigmoid_dayflag.py
 
-Comportamiento configurable desde config.py:
-    • ACTIVATION      : "sigmoid" o "linear" — función de activación de salida
+Behaviour is configurable from config.py:
+    • ACTIVATION      : "sigmoid" or "linear" — output activation function
     • DESCALER_METHOD : "physical" | "minmax" | "z_score" | "average"
-    • USE_DAYMASK     : True/False — máscara de noche durante entrenamiento
+    • USE_DAYMASK     : True/False — night mask during training
 
-Flujo principal:
-    1. Cargar splits (train/val/test) desde el archivo .npz
-    2. Construir la Bi-LSTM con los hiperparámetros de config.py
-    3. Entrenar con AdamW + ReduceLROnPlateau + early stopping
-       (si USE_DAYMASK=True: predicciones nocturnas → 0, pérdida nocturna = 0)
-    4. Evaluar en espacio normalizado y real (desescalado)
-    5. Generar gráficas: curva de pérdida, scatter, histogramas de residuos
-    6. Guardar CSV con predicciones, imagen resumen 3×3 y report.txt
+Main workflow:
+    1. Load train/val/test splits from the .npz file
+    2. Build the Bi-LSTM with hyperparameters from config.py
+    3. Train with AdamW + ReduceLROnPlateau + early stopping
+       (if USE_DAYMASK=True: night predictions → 0, night loss = 0)
+    4. Evaluate in normalised and real space (de-scaled)
+    5. Generate plots: loss curve, scatter, residual histograms
+    6. Save CSV with predictions, 3×3 summary image and report.txt
 """
 
 from __future__ import annotations
@@ -46,10 +46,10 @@ from sklearn.metrics import (
     mean_squared_error, mean_absolute_error, r2_score, root_mean_squared_error
 )
 
-# Arquitectura principal: Bi-LSTM bidireccional
+# Main architecture: bidirectional Bi-LSTM
 from _4_LSTM_modules.NN_modules.BiLSTMRegressor import BiLSTMRegressor
 
-# TensorBoard (opcional — solo si está instalado)
+# TensorBoard (optional — only if installed)
 try:
     from torch.utils.tensorboard import SummaryWriter
     _TENSORBOARD = True
@@ -57,7 +57,7 @@ except ImportError:
     _TENSORBOARD = False
 
 # -----------------------------------------------------------------------
-# Importar todos los hiperparámetros y rutas desde config.py
+# Import all hyperparameters and paths from config.py
 # -----------------------------------------------------------------------
 from config import (
     SEQ_NPZ_FILE, RUNS_DIR,
@@ -70,27 +70,27 @@ from config import (
 )
 
 # -----------------------------------------------------------------------
-# CONFIGURACIÓN DE LA CORRIDA — único bloque que el usuario debe editar
+# RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
-# Nombre descriptivo de la corrida (se añade timestamp automáticamente)
+# Descriptive name for the run (a timestamp is appended automatically)
 RUN_NAME = "4launch_Multfeat_sym24_BiLSTM"
 
-# Ruta al archivo .npz con las secuencias preparadas
+# Path to the .npz file with the prepared sequences
 SEQ_NPZ = SEQ_NPZ_FILE
 
-# Especificación del desescalado: (ruta NetCDF, variable)
-# El método se controla con DESCALER_METHOD en config.py
+# De-scaling specification: (NetCDF path, variable)
+# The method is controlled by DESCALER_METHOD in config.py
 DESCALER_FILE = CSI_GHI_FILE
 DESCALER_VAR  = CSI_VAR_NAME
 
 # -----------------------------------------------------------------------
-# Crear directorio de la corrida con timestamp
+# Create the run directory with a timestamp
 # -----------------------------------------------------------------------
 _NOW    = datetime.now().strftime("%Y%m%d_%H%M%S")
 RUN_DIR = os.path.join(RUNS_DIR, f"{RUN_NAME}_{_NOW}")
 os.makedirs(RUN_DIR, exist_ok=True)
 
-# Diccionario con todas las rutas de artefactos de la corrida
+# Dictionary with all run artefact paths
 PATHS = dict(
     model       = os.path.join(RUN_DIR, "best_model.pt"),
     csv_n       = os.path.join(RUN_DIR, "pred_norm.csv"),
@@ -112,7 +112,7 @@ PATHS = dict(
 # =======================================================================
 
 class SeqDS(Dataset):
-    """Dataset de secuencias 3D (muestras, pasos_temporales, features)."""
+    """3D sequence dataset (samples, time_steps, features)."""
     def __init__(self, X: np.ndarray, y: np.ndarray):
         self.X = torch.tensor(X, dtype=torch.float32)
         self.y = torch.tensor(y, dtype=torch.float32)
@@ -121,11 +121,11 @@ class SeqDS(Dataset):
         return len(self.y)
 
     def __getitem__(self, idx):
-        return self.X[idx], self.y[idx], idx   # devuelve el índice para la máscara
+        return self.X[idx], self.y[idx], idx   # returns the index for masking
 
 
 def load_splits(path: str):
-    """Carga los splits train/val/test desde el archivo .npz."""
+    """Load train/val/test splits from the .npz file."""
     d = np.load(path, allow_pickle=True)
     return (
         d["X_train"], d["y_train"], d["t_train"],
@@ -135,7 +135,7 @@ def load_splits(path: str):
 
 
 # =======================================================================
-# MÁSCARA DE DÍA/NOCHE
+# DAY/NIGHT MASK
 # =======================================================================
 
 def compute_day_mask(
@@ -145,28 +145,28 @@ def compute_day_mask(
     tz_offset: int = UTC_OFFSET,
 ) -> torch.Tensor:
     """
-    Genera un tensor binario (1 = día, 0 = noche) para cada timestamp.
+    Generates a binary tensor (1 = day, 0 = night) for each timestamp.
 
-    Parámetros
+    Parameters
     ----------
-    timestamps  : array de timestamps (UTC) correspondientes al target.
-    flag_start  : hora local de inicio de la noche (después de esta hora = noche).
-    flag_end    : hora local de fin de la noche (antes de esta hora = noche).
-    tz_offset   : desplazamiento UTC → hora local (horas).
+    timestamps  : array of timestamps (UTC) corresponding to the target.
+    flag_start  : local hour at which night begins (after this hour = night).
+    flag_end    : local hour at which night ends (before this hour = night).
+    tz_offset   : UTC → local time offset (hours).
     """
     ts_local = pd.to_datetime(timestamps) + pd.Timedelta(hours=tz_offset)
-    horas    = ts_local.hour
-    mascara  = ((horas > flag_start) & (horas < flag_end)).astype(float)
-    vals     = mascara.values if hasattr(mascara, "values") else mascara
+    hours    = ts_local.hour
+    mask     = ((hours > flag_start) & (hours < flag_end)).astype(float)
+    vals     = mask.values if hasattr(mask, "values") else mask
     return torch.tensor(vals, dtype=torch.float32)
 
 
 # =======================================================================
-# UTILIDADES DE DESESCALADO
+# DE-SCALING UTILITIES
 # =======================================================================
 
 def get_dataarray(path: str, var: str | None) -> xr.DataArray:
-    """Abre el NetCDF de referencia y devuelve el DataArray de la variable indicada."""
+    """Open the reference NetCDF and return the DataArray for the specified variable."""
     ds = xr.open_dataset(path)
     if var is None:
         var = list(ds.data_vars)[0]
@@ -174,14 +174,14 @@ def get_dataarray(path: str, var: str | None) -> xr.DataArray:
 
 
 def build_stats(da: xr.DataArray, method: str) -> dict:
-    """Pre-calcula estadísticos necesarios para el desescalado."""
+    """Pre-compute statistics needed for de-scaling."""
     if method == "z_score":
         return {"mu": float(da.mean()), "sigma": float(da.std())}
     if method == "average":
         return {"mean": float(da.mean())}
     if method == "minmax":
         return {"min": float(da.min()), "max": float(da.max())}
-    return {}   # "physical" y "none" no necesitan estadísticos pre-calculados
+    return {}   # "physical" and "none" require no pre-computed statistics
 
 
 def descale(
@@ -192,18 +192,18 @@ def descale(
     stats: dict,
 ) -> np.ndarray:
     """
-    Convierte predicciones del espacio normalizado al espacio real (W/m²).
+    Converts predictions from normalised space to real space (W/m²).
 
-    Métodos soportados
-    ------------------
-    physical : multiplica por el valor de referencia (GHI_cs) en cada instante.
-    minmax   : invierte la normalización min-max.
-    z_score  : invierte la estandarización (media=0, std=1).
-    average  : invierte la normalización por media.
-    none     : sin transformación (devuelve arr intacto).
+    Supported methods
+    -----------------
+    physical : multiplies by the reference value (GHI_cs) at each timestamp.
+    minmax   : inverts min-max normalisation.
+    z_score  : inverts standardisation (mean=0, std=1).
+    average  : inverts mean normalisation.
+    none     : no transformation (returns arr unchanged).
     """
     if method == "physical":
-        # Selecciona el valor de GHI_cs en cada instante de observación
+        # Select the GHI_cs value at each observation timestamp
         return arr * da.sel(observation_time=times).values
     elif method == "minmax":
         return arr * (stats["max"] - stats["min"]) + stats["min"]
@@ -214,15 +214,15 @@ def descale(
     elif method == "none":
         return arr
     else:
-        raise ValueError(f"Método de desescalado desconocido: '{method}'")
+        raise ValueError(f"Unknown de-scaling method: '{method}'")
 
 
 # =======================================================================
-# FORMATO DE NÚMEROS (estilo europeo con punto de miles y coma decimal)
+# NUMBER FORMATTING (European style with thousands dot and decimal comma)
 # =======================================================================
 
 def fmt_de(val, prec: int = 4) -> str:
-    """Formatea un número como '1.234.567,8910' (estilo europeo)."""
+    """Formats a number as '1.234.567,8910' (European style)."""
     if isinstance(val, (float, np.floating)):
         s = f"{val:,.{prec}f}"
     else:
@@ -231,17 +231,17 @@ def fmt_de(val, prec: int = 4) -> str:
 
 
 # =======================================================================
-# FUNCIONES DE VISUALIZACIÓN
+# VISUALISATION FUNCTIONS
 # =======================================================================
 
 def plot_loss(history: list, out: str) -> None:
-    """Guarda la curva de pérdida (train vs val) por época."""
+    """Saves the loss curve (train vs val) per epoch."""
     ep, tl, vl = zip(*history)
     plt.figure()
     plt.plot(ep, tl, label="train")
     plt.plot(ep, vl, label="val")
-    plt.title(f"{RUN_NAME} — Curva de pérdida")
-    plt.xlabel("Época")
+    plt.title(f"{RUN_NAME} — Loss curve")
+    plt.xlabel("Epoch")
     plt.ylabel("MSE")
     plt.grid(True)
     plt.legend()
@@ -250,53 +250,53 @@ def plot_loss(history: list, out: str) -> None:
     plt.close()
 
 
-def scatter(y_t: np.ndarray, y_p: np.ndarray, out: str, espacio: str) -> None:
+def scatter(y_t: np.ndarray, y_p: np.ndarray, out: str, space: str) -> None:
     """
-    Genera un scatter plot de valores reales vs predichos.
-    espacio : "Norm" para espacio normalizado, "Real" para W/m².
+    Generates a scatter plot of true vs predicted values.
+    space : "Norm" for normalised space, "Real" for W/m².
     """
     lims = [min(y_t.min(), y_p.min()), max(y_t.max(), y_p.max())]
     plt.figure(figsize=(8, 8))
     plt.scatter(y_t, y_p, s=8, alpha=0.5)
     plt.plot(lims, lims, "r--")
-    if espacio == "Real":
-        plt.title(f"{RUN_NAME} — Predicho vs Real (W/m²)")
+    if space == "Real":
+        plt.title(f"{RUN_NAME} — Predicted vs True (W/m²)")
         plt.xlabel(r"$y_{true}$ (W/m²)")
         plt.ylabel(r"$y_{pred}$ (W/m²)")
     else:
-        plt.title(f"{RUN_NAME} — Predicho vs Real (normalizado)")
-        plt.xlabel(r"$y_{true}$ (normalizado)")
-        plt.ylabel(r"$y_{pred}$ (normalizado)")
+        plt.title(f"{RUN_NAME} — Predicted vs True (normalised)")
+        plt.xlabel(r"$y_{true}$ (normalised)")
+        plt.ylabel(r"$y_{pred}$ (normalised)")
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(out, dpi=300)
     plt.close()
 
 
-def hist_residuos(resid: np.ndarray, out: str, espacio: str) -> None:
-    """Histograma de residuos (predicho − real)."""
+def hist_residuos(resid: np.ndarray, out: str, space: str) -> None:
+    """Histogram of residuals (predicted − true)."""
     plt.figure()
     plt.hist(resid, bins=50, edgecolor="k", alpha=0.7)
-    plt.title(f"{RUN_NAME} — Histograma de residuos")
-    plt.xlabel("Residuo [W/m²]" if espacio == "Real" else "Residuo")
-    plt.ylabel("Frecuencia")
+    plt.title(f"{RUN_NAME} — Residual histogram")
+    plt.xlabel("Residual [W/m²]" if space == "Real" else "Residual")
+    plt.ylabel("Frequency")
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(out, dpi=300)
     plt.close()
 
 
-def hist_sin_ceros(resid: np.ndarray, out: str, espacio: str) -> None:
+def hist_sin_ceros(resid: np.ndarray, out: str, space: str) -> None:
     """
-    Histograma de residuos excluyendo ceros (las horas nocturnas generan
-    muchos residuos = 0 que distorsionan la escala del histograma).
+    Histogram of residuals excluding zeros (night-time hours produce
+    many residuals = 0 that distort the histogram scale).
     """
     resid_nz = resid[resid != 0]
     plt.figure(figsize=(8, 6))
     plt.hist(resid_nz, bins=50, edgecolor="k", alpha=0.7)
-    plt.title(f"{RUN_NAME} — Residuos sin ceros")
-    plt.xlabel("Residuo [W/m²]" if espacio == "Real" else "Residuo")
-    plt.ylabel("Frecuencia")
+    plt.title(f"{RUN_NAME} — Residuals (without zeros)")
+    plt.xlabel("Residual [W/m²]" if space == "Real" else "Residual")
+    plt.ylabel("Frequency")
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(out, dpi=300)
@@ -305,68 +305,68 @@ def hist_sin_ceros(resid: np.ndarray, out: str, espacio: str) -> None:
 
 def make_summary(paths: dict, metrics_n: dict, metrics_r: dict, hparams: dict) -> None:
     """
-    Genera una imagen resumen con layout 3×3:
+    Generates a summary image with a 3×3 layout:
     ┌──────────────┬──────────────┬──────────────┐
-    │ Scatter Norm │ Scatter Real │  Loss Curve  │ fila 0
+    │ Scatter Norm │ Scatter Real │  Loss Curve  │ row 0
     ├──────────────┼──────────────┼──────────────┤
-    │  Hist Norm   │  Hist Real   │ Hiperparams  │ fila 1
+    │  Hist Norm   │  Hist Real   │ Hyperparams  │ row 1
     ├──────────────┼──────────────┼──────────────┤
-    │ Hist Norm ∅0 │ Hist Real ∅0 │   Métricas   │ fila 2
+    │ Hist Norm ∅0 │ Hist Real ∅0 │   Metrics    │ row 2
     └──────────────┴──────────────┴──────────────┘
     """
     fig = plt.figure(figsize=(16, 15))
     gs  = fig.add_gridspec(3, 3, height_ratios=[1, 1, 1.1])
 
-    # Fila 0 y parte de fila 1: imágenes de scatter, pérdida e histogramas
-    imagenes = [
+    # Rows 0 and part of row 1: scatter, loss, and histogram images
+    images = [
         (gs[0, 0], paths["scatter_n"],    "Scatter Norm"),
         (gs[0, 1], paths["scatter_r"],    "Scatter Real"),
-        (gs[0, 2], paths["loss"],         "Curva de pérdida"),
-        (gs[1, 0], paths["hist_n"],       "Histograma Norm"),
-        (gs[1, 1], paths["hist_r"],       "Histograma Real"),
+        (gs[0, 2], paths["loss"],         "Loss curve"),
+        (gs[1, 0], paths["hist_n"],       "Histogram Norm"),
+        (gs[1, 1], paths["hist_r"],       "Histogram Real"),
     ]
-    for celda, fname, titulo in imagenes:
-        ax = fig.add_subplot(celda)
+    for cell, fname, title in images:
+        ax = fig.add_subplot(cell)
         ax.imshow(plt.imread(fname))
-        ax.set_title(titulo, fontsize=11)
+        ax.set_title(title, fontsize=11)
         ax.axis("off")
 
-    # Fila 1, columna 2: tabla de hiperparámetros
+    # Row 1, column 2: hyperparameter table
     ax_hp = fig.add_subplot(gs[1, 2])
     ax_hp.axis("off")
     tbl = ax_hp.table(
         cellText=[[k, str(v)] for k, v in hparams.items()],
-        colLabels=["Hiperparámetro", "Valor"],
+        colLabels=["Hyperparameter", "Value"],
         loc="center", cellLoc="center",
     )
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(9)
     tbl.scale(1.2, 1.4)
-    ax_hp.set_title("Hiperparámetros", fontsize=11, pad=6)
+    ax_hp.set_title("Hyperparameters", fontsize=11, pad=6)
 
-    # Fila 2: histogramas sin ceros y tabla de métricas
-    for celda, clave, titulo in [
+    # Row 2: histograms without zeros and metrics table
+    for cell, key, title in [
         (gs[2, 0], "hist_n_zeros", "Hist Norm ∅0"),
         (gs[2, 1], "hist_r_zeros", "Hist Real ∅0"),
     ]:
-        ax = fig.add_subplot(celda)
-        ax.imshow(plt.imread(paths[clave]))
-        ax.set_title(titulo, fontsize=11)
+        ax = fig.add_subplot(cell)
+        ax.imshow(plt.imread(paths[key]))
+        ax.set_title(title, fontsize=11)
         ax.axis("off")
 
     ax_met = fig.add_subplot(gs[2, 2])
     ax_met.axis("off")
-    filas_met = ["MSE", "RMSE", "MAE", "R2", "Corr", "Residual_Variance", "SkillScore"]
-    datos_met = [[r, f"{metrics_r[r]:.4f}"] for r in filas_met if r in metrics_r]
+    metric_rows = ["MSE", "RMSE", "MAE", "R2", "Corr", "Residual_Variance", "SkillScore"]
+    metric_data = [[r, f"{metrics_r[r]:.4f}"] for r in metric_rows if r in metrics_r]
     tbl_met = ax_met.table(
-        cellText=datos_met,
-        colLabels=["Métrica", "Valor real"],
+        cellText=metric_data,
+        colLabels=["Metric", "Real value"],
         loc="center", cellLoc="center",
     )
     tbl_met.auto_set_font_size(False)
     tbl_met.set_fontsize(9)
     tbl_met.scale(1.1, 1.5)
-    ax_met.set_title("Métricas de evaluación (real)", fontsize=11, pad=6)
+    ax_met.set_title("Evaluation metrics (real space)", fontsize=11, pad=6)
 
     fig.suptitle(RUN_NAME, fontsize=17, y=0.94)
     fig.tight_layout(rect=[0, 0, 1, 0.93])
@@ -375,21 +375,21 @@ def make_summary(paths: dict, metrics_n: dict, metrics_r: dict, hparams: dict) -
 
 
 # =======================================================================
-# FUNCIÓN PRINCIPAL DE ENTRENAMIENTO
+# MAIN TRAINING FUNCTION
 # =======================================================================
 
 def main():
     # -------------------------------------------------------------------
-    # 1) Cargar splits train / val / test desde el archivo .npz
+    # 1) Load train / val / test splits from the .npz file
     # -------------------------------------------------------------------
     print(f"\n{'='*60}")
-    print(f"  Corrida: {RUN_NAME}")
-    print(f"  Datos:   {SEQ_NPZ}")
-    print(f"  Activación:  {ACTIVATION} | Desescalado: {DESCALER_METHOD} | Máscara noche: {USE_DAYMASK}")
+    print(f"  Run: {RUN_NAME}")
+    print(f"  Data:   {SEQ_NPZ}")
+    print(f"  Activation:  {ACTIVATION} | De-scaling: {DESCALER_METHOD} | Night mask: {USE_DAYMASK}")
     print(f"{'='*60}\n")
 
     X_tr, y_tr, t_tr, X_va, y_va, t_va, X_te, y_te, t_te = load_splits(SEQ_NPZ)
-    print(f"Forma del vector de entrada (train): {X_tr.shape}")
+    print(f"Input shape (train): {X_tr.shape}")
 
     tr_dl = DataLoader(SeqDS(X_tr, y_tr), BATCH_SIZE, shuffle=True)
     va_dl = DataLoader(SeqDS(X_va, y_va), BATCH_SIZE)
@@ -398,137 +398,137 @@ def main():
     seq_len, n_feat = X_tr.shape[1], X_tr.shape[2]
 
     # -------------------------------------------------------------------
-    # 2) Pre-calcular máscaras de día/noche (se usan si USE_DAYMASK=True)
+    # 2) Pre-compute day/night masks (used when USE_DAYMASK=True)
     # -------------------------------------------------------------------
-    # Las máscaras tienen un valor por muestra (1=día, 0=noche)
-    mascara_train = compute_day_mask(t_tr)
-    mascara_val   = compute_day_mask(t_va)
-    mascara_test  = compute_day_mask(t_te)
+    # Masks have one value per sample (1=day, 0=night)
+    mask_train = compute_day_mask(t_tr)
+    mask_val   = compute_day_mask(t_va)
+    mask_test  = compute_day_mask(t_te)
 
     # -------------------------------------------------------------------
-    # 3) Construir el modelo Bi-LSTM con los hiperparámetros de config.py
+    # 3) Build the Bi-LSTM model with hyperparameters from config.py
     # -------------------------------------------------------------------
-    modelo = BiLSTMRegressor(
+    model = BiLSTMRegressor(
         n_feat     = n_feat,
         hidden     = HIDDEN,
         seq_len    = seq_len,
         num_layers = NUM_LAYERS,
         dropout    = DROPOUT,
-        activation = ACTIVATION,   # "sigmoid" o "linear" — desde config.py
+        activation = ACTIVATION,   # "sigmoid" or "linear" — from config.py
     )
-    print(f"Parámetros del modelo: {sum(p.numel() for p in modelo.parameters()):,}")
+    print(f"Model parameters: {sum(p.numel() for p in model.parameters()):,}")
 
-    # Optimizador AdamW con regularización L2
-    optim     = torch.optim.AdamW(modelo.parameters(), lr=LR_INIT, weight_decay=L2_LAMBDA)
-    # Scheduler que reduce la LR cuando la pérdida de validación se estanca
+    # AdamW optimiser with L2 regularisation
+    optim     = torch.optim.AdamW(model.parameters(), lr=LR_INIT, weight_decay=L2_LAMBDA)
+    # Scheduler that reduces the LR when validation loss plateaus
     scheduler = ReduceLROnPlateau(
         optim, mode="min", factor=LR_FACTOR, patience=LR_PATIENCE,
         threshold=1e-4, min_lr=MIN_LR, verbose=True,
     )
-    # Pérdida MSE sin reducción (para poder ponderar con la máscara)
+    # MSE loss without reduction (to allow weighting with the mask)
     loss_fn = nn.MSELoss(reduction="none")
 
-    # TensorBoard: registra el grafo del modelo si está disponible
+    # TensorBoard: logs the model graph if available
     if _TENSORBOARD:
         writer    = SummaryWriter(log_dir=RUN_DIR)
         dummy_inp = torch.randn(1, seq_len, n_feat)
-        writer.add_graph(modelo, dummy_inp)
+        writer.add_graph(model, dummy_inp)
 
     # -------------------------------------------------------------------
-    # 4) Bucle de entrenamiento con early stopping
+    # 4) Training loop with early stopping
     # -------------------------------------------------------------------
-    mejor_val, paciencia, historial = float("inf"), 0, []
+    best_val, patience, history = float("inf"), 0, []
 
-    barra = trange(1, EPOCHS + 1, desc="Épocas", unit="ep", leave=True)
-    for ep in barra:
-        # ---- Fase de entrenamiento ------------------------------------
-        modelo.train()
-        perdida_train = 0.0
+    pbar = trange(1, EPOCHS + 1, desc="Epochs", unit="ep", leave=True)
+    for ep in pbar:
+        # ---- Training phase -------------------------------------------
+        model.train()
+        train_loss = 0.0
         for xb, yb, idx in tr_dl:
             optim.zero_grad()
-            preds = modelo(xb)              # (B,)
+            preds = model(xb)              # (B,)
 
             if USE_DAYMASK:
-                # Aplicar máscara: predicciones nocturnas → 0
-                mascara = mascara_train[idx]
-                preds   = preds * mascara
-                # La pérdida no se acumula en horas nocturnas
-                perdida = (loss_fn(preds, yb) * mascara).mean()
+                # Apply mask: night predictions → 0
+                mask  = mask_train[idx]
+                preds = preds * mask
+                # Loss is not accumulated for night-time hours
+                loss  = (loss_fn(preds, yb) * mask).mean()
             else:
-                perdida = loss_fn(preds, yb).mean()
+                loss = loss_fn(preds, yb).mean()
 
-            perdida.backward()
-            # Recorte de gradientes para estabilidad numérica
-            torch.nn.utils.clip_grad_norm_(modelo.parameters(), 1.0)
+            loss.backward()
+            # Gradient clipping for numerical stability
+            torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
             optim.step()
-            perdida_train += perdida.item() * len(xb)
-        perdida_train /= len(tr_dl.dataset)
+            train_loss += loss.item() * len(xb)
+        train_loss /= len(tr_dl.dataset)
 
-        # ---- Fase de validación ---------------------------------------
-        modelo.eval()
-        perdida_val = 0.0
+        # ---- Validation phase -----------------------------------------
+        model.eval()
+        val_loss = 0.0
         with torch.no_grad():
             for xb, yb, idx in va_dl:
-                preds = modelo(xb)
+                preds = model(xb)
                 if USE_DAYMASK:
-                    mascara = mascara_val[idx]
-                    preds   = preds * mascara
-                    perdida = (loss_fn(preds, yb) * mascara).mean()
+                    mask  = mask_val[idx]
+                    preds = preds * mask
+                    loss  = (loss_fn(preds, yb) * mask).mean()
                 else:
-                    perdida = loss_fn(preds, yb).mean()
-                perdida_val += perdida.item() * len(xb)
-        perdida_val /= len(va_dl.dataset)
+                    loss = loss_fn(preds, yb).mean()
+                val_loss += loss.item() * len(xb)
+        val_loss /= len(va_dl.dataset)
 
-        scheduler.step(perdida_val)
+        scheduler.step(val_loss)
         tqdm.write(
-            f"[{ep:3d}/{EPOCHS}] train {perdida_train:.5f} | "
-            f"val {perdida_val:.5f} | lr {optim.param_groups[0]['lr']:.1e}"
+            f"[{ep:3d}/{EPOCHS}] train {train_loss:.5f} | "
+            f"val {val_loss:.5f} | lr {optim.param_groups[0]['lr']:.1e}"
         )
-        historial.append((ep, perdida_train, perdida_val))
+        history.append((ep, train_loss, val_loss))
 
         # ---- Early stopping -------------------------------------------
-        if perdida_val < mejor_val:
-            mejor_val, paciencia = perdida_val, 0
-            torch.save(modelo.state_dict(), PATHS["model"])
+        if val_loss < best_val:
+            best_val, patience = val_loss, 0
+            torch.save(model.state_dict(), PATHS["model"])
         else:
-            paciencia += 1
-            if paciencia >= EARLY_STOP:
-                tqdm.write("Early stopping activado.")
+            patience += 1
+            if patience >= EARLY_STOP:
+                tqdm.write("Early stopping triggered.")
                 break
 
-    plot_loss(historial, PATHS["loss"])
+    plot_loss(history, PATHS["loss"])
 
     # -------------------------------------------------------------------
-    # 5) Evaluación en espacio normalizado (test set)
+    # 5) Evaluation in normalised space (test set)
     # -------------------------------------------------------------------
-    modelo.load_state_dict(torch.load(PATHS["model"]))
-    modelo.eval()
+    model.load_state_dict(torch.load(PATHS["model"]))
+    model.eval()
 
-    preds_lista = []
+    preds_list = []
     with torch.no_grad():
         for xb, _, idx in te_dl:
-            preds = modelo(xb)
+            preds = model(xb)
             if USE_DAYMASK:
-                # Durante la inferencia también se aplica el hard-clip nocturno
-                preds = preds * mascara_test[idx]
-            preds_lista.append(preds.numpy())
-    y_pred = np.concatenate(preds_lista)   # (n_test,)
+                # Hard-clip is also applied during inference for night hours
+                preds = preds * mask_test[idx]
+            preds_list.append(preds.numpy())
+    y_pred = np.concatenate(preds_list)   # (n_test,)
 
-    # Calcular métricas en espacio normalizado
-    residuos_n           = y_te - y_pred
-    varianza_residuos_n  = float(np.var(residuos_n))
-    metricas_n = dict(
+    # Compute metrics in normalised space
+    residuals_n          = y_te - y_pred
+    residual_variance_n  = float(np.var(residuals_n))
+    metrics_n = dict(
         MSE              = mean_squared_error(y_te, y_pred),
         MAE              = mean_absolute_error(y_te, y_pred),
         R2               = r2_score(y_te, y_pred),
         Corr             = float(np.corrcoef(y_te.ravel(), y_pred.ravel())[0, 1]),
-        Residual_Variance= varianza_residuos_n,
+        Residual_Variance= residual_variance_n,
     )
-    print("\n=== Evaluación — espacio normalizado ===")
-    for k, v in metricas_n.items():
+    print("\n=== Evaluation — normalised space ===")
+    for k, v in metrics_n.items():
         print(f"{k:>20}: {fmt_de(v)}")
 
-    # Guardar CSV normalizado y generar gráficas
+    # Save normalised CSV and generate plots
     pd.DataFrame({"time": pd.to_datetime(t_te), "y_true": y_te, "y_pred": y_pred})\
         .to_csv(PATHS["csv_n"], index=False)
     scatter(y_te,    y_pred,           PATHS["scatter_n"],    "Norm")
@@ -536,7 +536,7 @@ def main():
     hist_sin_ceros(y_pred - y_te,      PATHS["hist_n_zeros"],  "Norm")
 
     # -------------------------------------------------------------------
-    # 6) Desescalado: convertir predicciones normalizadas a W/m²
+    # 6) De-scaling: convert normalised predictions to W/m²
     # -------------------------------------------------------------------
     da_ref    = get_dataarray(DESCALER_FILE, DESCALER_VAR)
     stats_ref = build_stats(da_ref, DESCALER_METHOD)
@@ -544,26 +544,26 @@ def main():
     y_pred_r  = descale(y_pred, t_te, DESCALER_METHOD, da_ref, stats_ref)
 
     # -------------------------------------------------------------------
-    # 7) Evaluación en espacio real (W/m²)
+    # 7) Evaluation in real space (W/m²)
     # -------------------------------------------------------------------
-    residuos_r          = y_true_r - y_pred_r
-    varianza_residuos_r = float(np.var(residuos_r))
-    metricas_r = dict(
+    residuals_r          = y_true_r - y_pred_r
+    residual_variance_r  = float(np.var(residuals_r))
+    metrics_r = dict(
         MSE              = mean_squared_error(y_true_r, y_pred_r),
         RMSE             = root_mean_squared_error(y_true_r, y_pred_r),
         MAE              = mean_absolute_error(y_true_r, y_pred_r),
         R2               = r2_score(y_true_r, y_pred_r),
         Corr             = float(np.corrcoef(y_true_r.ravel(), y_pred_r.ravel())[0, 1]),
-        Residual_Variance= varianza_residuos_r,
+        Residual_Variance= residual_variance_r,
     )
-    # Skill Score: cuánto mejora el modelo sobre el pronóstico GFS directo
-    metricas_r["SkillScore"] = 1.0 - metricas_r["MSE"] / MSE_BASELINE_R
+    # Skill Score: how much the model improves over the direct GFS forecast
+    metrics_r["SkillScore"] = 1.0 - metrics_r["MSE"] / MSE_BASELINE_R
 
-    print("\n=== Evaluación — espacio real (W/m²) ===")
-    for k, v in metricas_r.items():
+    print("\n=== Evaluation — real space (W/m²) ===")
+    for k, v in metrics_r.items():
         print(f"{k:>20}: {fmt_de(v)}")
 
-    # Guardar CSV real y generar gráficas
+    # Save real-space CSV and generate plots
     pd.DataFrame({"time": pd.to_datetime(t_te), "y_true": y_true_r, "y_pred": y_pred_r})\
         .to_csv(PATHS["csv_r"], index=False)
     scatter(y_true_r, y_pred_r,            PATHS["scatter_r"],    "Real")
@@ -571,11 +571,11 @@ def main():
     hist_sin_ceros(y_pred_r - y_true_r,    PATHS["hist_r_zeros"],  "Real")
 
     # -------------------------------------------------------------------
-    # 8) Imagen resumen 3×3 y archivo report.txt
+    # 8) 3×3 summary image and report.txt
     # -------------------------------------------------------------------
     hparams = {
         "LR":          LR_INIT,
-        "Épocas":      EPOCHS,
+        "Epochs":      EPOCHS,
         "Batch Size":  BATCH_SIZE,
         "Hidden":      HIDDEN,
         "Dropout":     DROPOUT,
@@ -584,37 +584,37 @@ def main():
         "Early Stop":  EARLY_STOP,
         "LR Factor":   LR_FACTOR,
         "LR Patience": LR_PATIENCE,
-        "Activación":  ACTIVATION,
-        "Desescalado": DESCALER_METHOD,
-        "Máscara noche": USE_DAYMASK,
+        "Activation":  ACTIVATION,
+        "De-scaling":  DESCALER_METHOD,
+        "Night mask":  USE_DAYMASK,
     }
-    make_summary(PATHS, metricas_n, metricas_r, hparams)
+    make_summary(PATHS, metrics_n, metrics_r, hparams)
 
-    # Escribir reporte de texto con todos los detalles de la corrida
+    # Write text report with all run details
     with open(PATHS["report"], "w", encoding="utf-8") as f:
-        f.write(f"# Reporte de corrida Bi-LSTM — {RUN_NAME}\n")
+        f.write(f"# Bi-LSTM run report — {RUN_NAME}\n")
         f.write(f"Timestamp: {_NOW}\n\n")
 
-        f.write("## Hiperparámetros\n")
+        f.write("## Hyperparameters\n")
         for k, v in hparams.items():
             f.write(f"{k}: {v}\n")
 
-        f.write("\n## Configuración de la corrida\n")
-        f.write(f"Archivo NPZ: {SEQ_NPZ}\n")
+        f.write("\n## Run configuration\n")
+        f.write(f"NPZ file: {SEQ_NPZ}\n")
         f.write(f"Descaler: {json.dumps({'method': DESCALER_METHOD, 'file': DESCALER_FILE, 'variable': DESCALER_VAR}, indent=2)}\n")
 
-        f.write("\n## Métricas — espacio normalizado\n")
-        for k, v in metricas_n.items():
+        f.write("\n## Metrics — normalised space\n")
+        for k, v in metrics_n.items():
             f.write(f"{k}: {v:.6f}\n")
 
-        f.write("\n## Métricas — espacio real (W/m²)\n")
-        for k, v in metricas_r.items():
+        f.write("\n## Metrics — real space (W/m²)\n")
+        for k, v in metrics_r.items():
             f.write(f"{k}: {v:.6f}\n")
 
     if _TENSORBOARD:
         writer.close()
 
-    print(f"\nTodos los artefactos guardados en: {RUN_DIR}")
+    print(f"\nAll artefacts saved to: {RUN_DIR}")
 
 
 # =======================================================================

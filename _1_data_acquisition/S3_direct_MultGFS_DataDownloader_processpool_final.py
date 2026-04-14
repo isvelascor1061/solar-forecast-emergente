@@ -89,20 +89,20 @@ tracemalloc.start()
 
 
 def _slice_geo(arr, lat_rng, lon_rng):
-    """Subset a DataArray auf Punkt oder Kachel – liefert neues, kleines Array."""
+    """Subset a DataArray to point or tile – returns a new, small array."""
     lat_name = next((c for c in ("latitude", "lat", "y")  if c in arr.coords), None)
     lon_name = next((c for c in ("longitude", "lon", "x") if c in arr.coords), None)
     if lat_name is None or lon_name is None:
-        return arr            # kein slicing möglich
+        return arr            # no slicing possible
 
     lon_adj = [l + 360 if l < 0 else l for l in lon_rng]
 
-    # Punkt- oder Kachelmodus
-    if len(lat_rng) == 1 and len(lon_rng) == 1:            # Punkt
+    # Point or tile mode
+    if len(lat_rng) == 1 and len(lon_rng) == 1:            # Point
         return arr.sel({lat_name: lat_rng[0],
                         lon_name: lon_adj[0]}, method="nearest").squeeze(drop=True)
 
-    # Kachel  -------------------------------------------------------------
+    # Tile  ---------------------------------------------------------------
     def _smart_slice(coord, rng):
         lo, hi = sorted(rng)
         ascend = coord[0] < coord[-1]
@@ -301,7 +301,7 @@ class GFSDownloader:
     
             arr = ds[next(iter(ds.data_vars))]
             
-            # -------   HIER  ALTEN Slicing-Block entfernen  -------------------------
+            # -------   REMOVE OLD slicing block here  --------------------------------
             arr = _slice_geo(arr, job["lat_range"], job["lon_range"])
 
     
@@ -446,7 +446,7 @@ class GFSDownloader:
                       initializer=_init_worker, initargs=(lock,)) as pool:
 
             for i, res in enumerate(pool.imap_unordered(self._download_and_process, generator, chunksize=1), 1):
-                print(f"[{i}/{total_tasks}] {res}")                      # reduzierte Ausgabe reicht
+                print(f"[{i}/{total_tasks}] {res}")                      # reduced output is sufficient
 
         print("Done-Duration:", datetime.now() - t0)
 

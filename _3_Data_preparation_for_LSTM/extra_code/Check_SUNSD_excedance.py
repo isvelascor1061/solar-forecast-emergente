@@ -21,8 +21,8 @@ data=ds[var_name]
 mask = data> threshold
 Anzahl = mask.sum().item()
 
-print(f"Anzahl der Werte > {threshold}: {Anzahl}")
+print(f"Number of values > {threshold}: {Anzahl}")
 if Anzahl > 0:
-    print("Es gibt Werte über dem Schwellenwert.")
+    print("Values above the threshold were found.")
 else:
-    print("Keine Werte über dem Schwellenwert gefunden.")
+    print("No values above the threshold found.")

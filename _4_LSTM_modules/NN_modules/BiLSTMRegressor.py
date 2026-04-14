@@ -73,5 +73,5 @@ class BiLSTMRegressor(nn.Module):
         pooled = self.post_do(torch.cat([h_fwd, h_bwd], dim=1))
         out = self.fc(pooled).squeeze(-1)                   # (B,)
         if self.activation == "sigmoid":
-            return torch.sigmoid(out)                       # salida acotada (0, 1)
-        return out                                          # "linear": sin activación
+            return torch.sigmoid(out)                       # output bounded in (0, 1)
+        return out                                          # "linear": no activation function applied

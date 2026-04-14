@@ -146,7 +146,7 @@ class DSWRF1Merger:
 if __name__ == "__main__":
     from config import MERGED_DSWRF1_1900_DIR, DSWRF1_UNCLIPPED_DIR
 
-    # Define el launch time a procesar en esta ejecución (ajustar según corresponda)
+    # Define the launch time to process in this run (adjust as needed)
     launch_time = "1900"
 
     # Set the paths for the input and output folders

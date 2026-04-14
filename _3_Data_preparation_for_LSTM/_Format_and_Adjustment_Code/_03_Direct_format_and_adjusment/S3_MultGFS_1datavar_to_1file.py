@@ -53,20 +53,20 @@ class NetCDFVarSplitter:
         Removes complete calendar days as soon as they contain ≥1 missing hour step
         (NaN).  Expects a 1 h grid.
         """
-        # Vollständigen Index anlegen …
+        # Build the complete index …
         full_idx = pd.date_range(
             da['observation_time'][0].item(),
             da['observation_time'][-1].item(),
             freq='1H'
         )
         da_full = da.reindex(observation_time=full_idx)
-    
-        # Für jeden Tag prüfen, ob ≥1 NaN vorkommt
+
+        # Check each day for ≥1 NaN
         bad_days = da_full.isnull().groupby('observation_time.date').any()
-        # Mapping Tag → True/False auf DataArray-Ebene
+        # Map day → True/False at the DataArray level
         keep_mask = da_full['observation_time'].dt.floor('D').map(~bad_days)
-    
-        # Tage mit Lücken verwerfen
+
+        # Drop days with gaps
         da_clean = da_full.where(keep_mask, drop=True)
         return da_clean
 

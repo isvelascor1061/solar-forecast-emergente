@@ -1,188 +1,188 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-config.py  –  Configuración central del proyecto Solar Medellín (Emergente)
-===========================================================================
-Centraliza todas las rutas de archivos y parámetros globales del pipeline.
-Organizado por sección según las 4 carpetas principales del proyecto.
+config.py  –  Central configuration for the Solar Medellín project (Emergente)
+===============================================================================
+Centralises all file paths and global pipeline parameters.
+Organised by section according to the 4 main project folders.
 
-Uso:
+Usage:
     from config import LAT, LON, SEQ_NPZ_FILE, ...
 """
 
 # ===================================================================
-# CONVENCIÓN DE NOMBRES DE VARIABLES EN NETCDF
+# NETCDF VARIABLE NAMING CONVENTION
 # ===================================================================
-# Esta sección centraliza todos los nombres de variables que aparecen
-# dentro de los archivos NetCDF del proyecto, según la convención
-# acordada para el Pipeline Solar Medellín (Proyecto Emergente).
+# This section centralises all variable names that appear inside the
+# NetCDF files of the project, following the convention agreed for the
+# Solar Medellín Pipeline (Proyecto Emergente).
 #
-# Esquema de prefijos:
-#   gfs_dswrf_acum   → Radiación GFS *acumulada* (variable cruda del servidor, sdswrf)
-#   gfs_dswrf        → Radiación GFS *desacumulada* a intervalos de 1 h (genérica)
-#   gfs_dswrf_<LT>   → Ídem, específica al tiempo de lanzamiento (0100/0700/1300/1900)
-#   gfs_csi          → Clear-Sky Index GFS  = DSWRF_GFS / Clear-Sky Ineichen
-#   gfs_kc           → Clearness Index GFS  = DSWRF_GFS / Radiación extraterrestre
-#   siata_ghi        → GHI observada SIATA, ya limpiada (sin excedencias de cielo despejado)
-#   siata_csi        → Clear-Sky Index SIATA = GHI_SIATA / Clear-Sky Ineichen
-#   ref_clearsky_ghi → Radiación de cielo despejado calculada con el modelo Ineichen
-#   ref_ext_ghi      → Radiación extraterrestre (límite físico superior de la atmósfera)
+# Prefix scheme:
+#   gfs_dswrf_acum   → GFS radiation *accumulated* (raw server variable, sdswrf)
+#   gfs_dswrf        → GFS radiation *de-accumulated* to 1-h intervals (generic)
+#   gfs_dswrf_<LT>   → Same, specific to a launch time (0100/0700/1300/1900)
+#   gfs_csi          → GFS Clear-Sky Index  = DSWRF_GFS / Clear-Sky Ineichen
+#   gfs_kc           → GFS Clearness Index  = DSWRF_GFS / Extraterrestrial radiation
+#   siata_ghi        → SIATA observed GHI, cleaned (no clear-sky exceedances)
+#   siata_csi        → SIATA Clear-Sky Index = GHI_SIATA / Clear-Sky Ineichen
+#   ref_clearsky_ghi → Clear-sky radiation computed with the Ineichen model
+#   ref_ext_ghi      → Extraterrestrial radiation (physical upper limit of the atmosphere)
 #
-# NOTA: Los nombres de variable DENTRO de los archivos .nc existentes NO se
-#       modifican para no invalidar datos ya generados. Las constantes VAR_*
-#       documentan a qué concepto físico corresponde cada string y sirven
-#       como fuente única de verdad en todos los scripts Python del pipeline.
+# NOTE: Variable names INSIDE existing .nc files are NOT modified to avoid
+#       invalidating already-generated data. The VAR_* constants simply
+#       document which physical concept each string corresponds to and serve
+#       as the single source of truth across all Python scripts.
 # ===================================================================
 
-# — Radiación GFS —
-VAR_GFS_DSWRF_ACUM     = "sdswrf"                    # GFS acumulado (variable del servidor NOAA)
-VAR_GFS_DSWRF          = "dswrf1"                    # GFS desacumulado genérico (sin LT específico)
-VAR_GFS_DSWRF_TEMPLATE = "dswrf1_{LT}"               # Plantilla por LT: .format(LT="0100")
-VAR_GFS_DSWRF_0100     = "dswrf1_0100"               # GFS desacumulado, lanzamiento 01:00 h
-VAR_GFS_DSWRF_0700     = "dswrf1_0700"               # GFS desacumulado, lanzamiento 07:00 h
-VAR_GFS_DSWRF_1300     = "dswrf1_1300"               # GFS desacumulado, lanzamiento 13:00 h
-VAR_GFS_DSWRF_1900     = "dswrf1_1900"               # GFS desacumulado, lanzamiento 19:00 h
-VAR_GFS_CSI_TEMPLATE   = "clearsky_index_GFS_{LT}"  # CSI GFS por LT (DSWRF / Clear-Sky Ineichen)
-VAR_GFS_KC_TEMPLATE    = "clearness_index_GFS_{LT}" # KC GFS por LT (DSWRF / Extraterrestre)
+# — GFS radiation —
+VAR_GFS_DSWRF_ACUM     = "sdswrf"                    # GFS accumulated (raw NOAA server variable)
+VAR_GFS_DSWRF          = "dswrf1"                    # GFS de-accumulated generic (no specific LT)
+VAR_GFS_DSWRF_TEMPLATE = "dswrf1_{LT}"               # Per-LT template: .format(LT="0100")
+VAR_GFS_DSWRF_0100     = "dswrf1_0100"               # GFS de-accumulated, launch time 01:00 h
+VAR_GFS_DSWRF_0700     = "dswrf1_0700"               # GFS de-accumulated, launch time 07:00 h
+VAR_GFS_DSWRF_1300     = "dswrf1_1300"               # GFS de-accumulated, launch time 13:00 h
+VAR_GFS_DSWRF_1900     = "dswrf1_1900"               # GFS de-accumulated, launch time 19:00 h
+VAR_GFS_CSI_TEMPLATE   = "clearsky_index_GFS_{LT}"  # GFS CSI per LT (DSWRF / Clear-Sky Ineichen)
+VAR_GFS_KC_TEMPLATE    = "clearness_index_GFS_{LT}" # GFS KC per LT (DSWRF / Extraterrestrial)
 
-# — Radiación observada SIATA —
-VAR_SIATA_GHI = "GHI_clean"            # GHI medida SIATA, limpiada de excedencias
-VAR_SIATA_CSI = "clearsky_index_Siata" # Clear-Sky Index de SIATA (GHI_SIATA / Ineichen)
+# — SIATA observed radiation —
+VAR_SIATA_GHI = "GHI_clean"            # SIATA measured GHI, cleaned of exceedances
+VAR_SIATA_CSI = "clearsky_index_Siata" # SIATA Clear-Sky Index (GHI_SIATA / Ineichen)
 
-# — Referencias solares (modelos físicos) —
-VAR_REF_CLEARSKY_GHI = "clear_sky_ghi"        # Modelo Ineichen con corrección de horizonte y sesgo
-VAR_REF_EXT_GHI      = "extraterrestrial_ghi" # Radiación en el techo de la atmósfera
+# — Solar references (physical models) —
+VAR_REF_CLEARSKY_GHI = "clear_sky_ghi"        # Ineichen model with horizon and bias correction
+VAR_REF_EXT_GHI      = "extraterrestrial_ghi" # Radiation at the top of the atmosphere
 
 
 # ===================================================================
-# PARÁMETROS GEOGRÁFICOS Y TEMPORALES DE MEDELLÍN
+# GEOGRAPHIC AND TEMPORAL PARAMETERS FOR MEDELLÍN
 # ===================================================================
 
-# Coordenadas del punto de medición (rejilla GFS más cercana a Medellín)
-LAT       = 6.25    # Latitud en grados norte
-LON       = -75.5   # Longitud en grados oeste (negativo = hemisferio oeste)
-ELEVATION = 1485    # Altitud sobre el nivel del mar en metros
+# Coordinates of the measurement point (closest GFS grid cell to Medellín)
+LAT       = 6.25    # Latitude in degrees north
+LON       = -75.5   # Longitude in degrees west (negative = western hemisphere)
+ELEVATION = 1485    # Altitude above sea level in metres
 
-# Zona horaria de Colombia respecto a UTC (sin cambio de horario de verano)
+# Colombia time zone offset from UTC (no daylight saving time)
 UTC_OFFSET = -5     # Colombia = UTC-5
 
-# Horarios de lanzamiento del modelo GFS disponibles (hora local Colombia)
+# Available GFS model launch times (local Colombia time)
 LAUNCH_TIMES = ["0100", "0700", "1300", "1900"]
 
-# Ventana diurna para la máscara de día/noche (hora local)
-FLAG_START = 19     # Hora en que empieza la noche local (19:00)
-FLAG_END   = 6      # Hora en que termina la noche local (06:00)
+# Diurnal window for the day/night mask (local time)
+FLAG_START = 19     # Hour at which night begins locally (19:00)
+FLAG_END   = 6      # Hour at which night ends locally (06:00)
 
 
 # ===================================================================
-# _1_data_acquisition  –  Descarga de datos GFS desde NOAA S3
+# _1_data_acquisition  –  GFS data download from NOAA S3
 # ===================================================================
 
-# --- Radiación de onda corta (DSWRF) en intervalos acumulados ------
-# Carpeta raíz de archivos brutos descargados por launch time
+# --- Short-wave radiation (DSWRF) in accumulated intervals ----------
+# Root folder for raw files downloaded per launch time
 RAW_DSWRF_DIR      = "_1_data_acquisition/_01_raw_rad_data/dswrf"
-RAW_DSWRF_0100_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_0100"   # Lanzamiento 01:00 h local
-RAW_DSWRF_0700_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_0700"   # Lanzamiento 07:00 h local
-RAW_DSWRF_1300_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_1300"   # Lanzamiento 13:00 h local
-RAW_DSWRF_1900_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_1900"   # Lanzamiento 19:00 h local
+RAW_DSWRF_0100_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_0100"   # Launch 01:00 h local
+RAW_DSWRF_0700_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_0700"   # Launch 07:00 h local
+RAW_DSWRF_1300_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_1300"   # Launch 13:00 h local
+RAW_DSWRF_1900_DIR = f"{RAW_DSWRF_DIR}/raw_dswrf_1900"   # Launch 19:00 h local
 
-# --- MultiGFS: todas las variables meteorológicas juntas -----------
-# Carpeta raíz de archivos brutos MultiGFS por launch time
+# --- MultiGFS: all meteorological variables together ---------------
+# Root folder for raw MultiGFS files per launch time
 RAW_MULTGFS_DIR      = "_1_data_acquisition/_02_raw_MultGFS_data"
-RAW_MULTGFS_0100_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_0100"   # Lanzamiento 01:00 h local
-RAW_MULTGFS_0700_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_0700"   # Lanzamiento 07:00 h local
-RAW_MULTGFS_1300_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_1300"   # Lanzamiento 13:00 h local
-RAW_MULTGFS_1900_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_1900"   # Lanzamiento 19:00 h local
+RAW_MULTGFS_0100_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_0100"   # Launch 01:00 h local
+RAW_MULTGFS_0700_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_0700"   # Launch 07:00 h local
+RAW_MULTGFS_1300_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_1300"   # Launch 13:00 h local
+RAW_MULTGFS_1900_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_1900"   # Launch 19:00 h local
 
-# --- Nombres de variables en los archivos del servidor S3 ----------
-GFS_VAR_RAW = VAR_GFS_DSWRF_ACUM   # Variable acumulada de onda corta en el servidor (media de intervalo)
-GFS_VAR_OUT = VAR_GFS_DSWRF        # Variable horaria resultante tras desacumulación
+# --- Variable names in the S3 server files -------------------------
+GFS_VAR_RAW = VAR_GFS_DSWRF_ACUM   # Accumulated short-wave variable on the server (interval mean)
+GFS_VAR_OUT = VAR_GFS_DSWRF        # Hourly variable produced after de-accumulation
 
 
 # ===================================================================
-# _2_data_postprocessing  –  Postprocesamiento de datos GFS
+# _2_data_postprocessing  –  GFS data post-processing
 # ===================================================================
 
-# --- Paso 1: Radiación bruta mergeada por día (antes de convertir a 1 h) ---
-# Un archivo por día y launch time, mergeados de todos los pasos de pronóstico
+# --- Step 1: Raw merged radiation per day (before converting to 1 h) ---
+# One file per day and launch time, merged across all forecast steps
 MERGED_DSWRF_RAW_DIR      = "_2_data_postprocessing/_01_merged_Radrawdata/dswrf"
 MERGED_DSWRF_RAW_0100_DIR = f"{MERGED_DSWRF_RAW_DIR}/merged_raw_dswrf_0100"   # LT 01:00 h
 MERGED_DSWRF_RAW_0700_DIR = f"{MERGED_DSWRF_RAW_DIR}/merged_raw_dswrf_0700"   # LT 07:00 h
 MERGED_DSWRF_RAW_1300_DIR = f"{MERGED_DSWRF_RAW_DIR}/merged_raw_dswrf_1300"   # LT 13:00 h
 MERGED_DSWRF_RAW_1900_DIR = f"{MERGED_DSWRF_RAW_DIR}/merged_raw_dswrf_1900"   # LT 19:00 h
 
-# --- Paso 2: Radiación horaria desacumulada (dswrf1) ---------------
-# Un archivo por día y launch time, con la variable convertida a intervalos de 1 h
+# --- Step 2: De-accumulated hourly radiation (dswrf1) ---------------
+# One file per day and launch time, variable converted to 1-h intervals
 MERGED_DSWRF1_DIR      = "_2_data_postprocessing/_02_merged_Rad1data/dswrf"
 MERGED_DSWRF1_0100_DIR = f"{MERGED_DSWRF1_DIR}/merged_raw_dswrf1_0100"   # LT 01:00 h
 MERGED_DSWRF1_0700_DIR = f"{MERGED_DSWRF1_DIR}/merged_raw_dswrf1_0700"   # LT 07:00 h
 MERGED_DSWRF1_1300_DIR = f"{MERGED_DSWRF1_DIR}/merged_raw_dswrf1_1300"   # LT 13:00 h
 MERGED_DSWRF1_1900_DIR = f"{MERGED_DSWRF1_DIR}/merged_raw_dswrf1_1900"   # LT 19:00 h
 
-# --- Paso 3: MultiGFS mergeado en 1 archivo por launch time --------
-# Contiene todas las variables meteorológicas a lo largo de toda la serie temporal
+# --- Step 3: MultiGFS merged into one file per launch time ---------
+# Contains all meteorological variables across the full time series
 MERGED_MULTGFS_DIR       = "_2_data_postprocessing/_03_Merged_MultGFS_data"
 MERGED_MULTGFS_0100_FILE = f"{MERGED_MULTGFS_DIR}/MultGFS_0100_2.nc"   # LT 01:00 h
 MERGED_MULTGFS_0700_FILE = f"{MERGED_MULTGFS_DIR}/MultGFS_0700_2.nc"   # LT 07:00 h
 MERGED_MULTGFS_1300_FILE = f"{MERGED_MULTGFS_DIR}/MultGFS_1300_2.nc"   # LT 13:00 h
 MERGED_MULTGFS_1900_FILE = f"{MERGED_MULTGFS_DIR}/MultGFS_1900_2.nc"   # LT 19:00 h
 
-# Launch time por defecto para scripts que procesan de a uno por ejecución
+# Default launch time for scripts that process one launch time per run
 LAUNCH_TIME_DEFAULT = "0100"
 
 
 # ===================================================================
-# _3_Data_preparation_for_LSTM  –  Preparación de datos para la red
+# _3_Data_preparation_for_LSTM  –  Data preparation for the network
 # ===================================================================
 
-# Directorio base de todos los datos preparados
+# Base directory for all prepared data
 PREP_DATA_DIR = "_3_Data_preparation_for_LSTM/Preparation_data"
 
-# --- Radiación de referencia solar --------------------------------
-# Radiación extraterrestre (techo físico máximo de radiación)
+# --- Solar reference radiation ------------------------------------
+# Extraterrestrial radiation (physical maximum ceiling of radiation)
 EXT_GHI_FILE = f"{PREP_DATA_DIR}/_01_CSI_EXT_radiation/Extraterrestrial_GHI/EXT_GHI_all.nc"
-EXT_VAR_NAME = VAR_REF_EXT_GHI   # Nombre de la variable dentro del NetCDF
+EXT_VAR_NAME = VAR_REF_EXT_GHI   # Variable name inside the NetCDF
 
-# Radiación de cielo despejado Ineichen (con corrección de horizonte y sesgo)
+# Clear-sky Ineichen radiation (with horizon profile and bias correction)
 CSI_GHI_FILE = (
     f"{PREP_DATA_DIR}/_01_CSI_EXT_radiation/Ineichen_GHI/"
     "CSI_GHI_grid25_avg_with_horizon_and_enhancement_with_bias_correct2.nc"
 )
-CSI_VAR_NAME = VAR_REF_CLEARSKY_GHI   # Nombre de la variable de cielo despejado
+CSI_VAR_NAME = VAR_REF_CLEARSKY_GHI   # Clear-sky variable name
 
-# --- dswrf1: radiación GFS sin cortar, una serie temporal por LT --
+# --- dswrf1: GFS radiation without clipping, one time series per LT --
 DSWRF1_UNCLIPPED_DIR = f"{PREP_DATA_DIR}/_02_GFS_dswrf1/Unclipped_merged_dswrf1"
 DSWRF1_0100_FILE     = f"{DSWRF1_UNCLIPPED_DIR}/dswrf1_0100.nc"   # LT 01:00 h
 DSWRF1_0700_FILE     = f"{DSWRF1_UNCLIPPED_DIR}/dswrf1_0700.nc"   # LT 07:00 h
 DSWRF1_1300_FILE     = f"{DSWRF1_UNCLIPPED_DIR}/dswrf1_1300.nc"   # LT 13:00 h
 DSWRF1_1900_FILE     = f"{DSWRF1_UNCLIPPED_DIR}/dswrf1_1900.nc"   # LT 19:00 h
 
-# --- dswrf1 cortada por Clear-Sky Index (CSI) ----------------------
-# Valores que exceden el cielo despejado son reemplazados por interpolación
+# --- dswrf1 clipped by Clear-Sky Index (CSI) -----------------------
+# Values exceeding the clear-sky reference are replaced by interpolation
 DSWRF1_CSI_DIR       = f"{PREP_DATA_DIR}/_02_GFS_dswrf1/GFS_merged_CSI_clipped"
 DSWRF1_CSI_0100_FILE = f"{DSWRF1_CSI_DIR}/dswrf1_CSI_0100.nc"   # LT 01:00 h
 DSWRF1_CSI_0700_FILE = f"{DSWRF1_CSI_DIR}/dswrf1_CSI_0700.nc"   # LT 07:00 h
 DSWRF1_CSI_1300_FILE = f"{DSWRF1_CSI_DIR}/dswrf1_CSI_1300.nc"   # LT 13:00 h
 DSWRF1_CSI_1900_FILE = f"{DSWRF1_CSI_DIR}/dswrf1_CSI_1900.nc"   # LT 19:00 h
 
-# --- dswrf1 cortada por radiación extraterrestre (EXT) -------------
+# --- dswrf1 clipped by extraterrestrial radiation (EXT) ------------
 DSWRF1_EXT_DIR = f"{PREP_DATA_DIR}/_02_GFS_dswrf1/GFS_merged_EXT_clipped"
 
-# --- Datos observados SIATA (irradiancia global horizontal medida) --
+# --- SIATA observed data (measured global horizontal irradiance) ---
 SIATA_GHI_FILE = f"{PREP_DATA_DIR}/_03_Siata_GHI/Netcdf_Siata_GHI/GHI_CSI_clipped.nc"
-SIATA_GHI_VAR  = VAR_SIATA_GHI   # Nombre de la variable GHI observada (SIATA limpiada)
+SIATA_GHI_VAR  = VAR_SIATA_GHI   # Observed GHI variable name (SIATA cleaned)
 
-# --- Índices solares calculados ------------------------------------
-# Clear-sky index (kc): GHI_GFS / GHI_ClearSky  →  normalizado 0-1
+# --- Computed solar indices ----------------------------------------
+# Clear-sky index (gfs_csi): GHI_GFS / GHI_ClearSky  →  normalised 0-1
 CSI_INDEX_DIR  = f"{PREP_DATA_DIR}/_04_indices/clear_sky_indices"
-SIATA_CSI_FILE = f"{CSI_INDEX_DIR}/clearsky_index_Siata.nc"   # Índice CSI de SIATA (target)
+SIATA_CSI_FILE = f"{CSI_INDEX_DIR}/clearsky_index_Siata.nc"   # SIATA CSI (prediction target)
 SIATA_CSI_VAR  = VAR_SIATA_CSI
 
-# Clearness index (ks): GHI_GFS / GHI_Extraterrestre  →  normalizado 0-1
+# Clearness index (gfs_kc): GHI_GFS / GHI_Extraterrestrial  →  normalised 0-1
 CLEARNESS_INDEX_DIR = f"{PREP_DATA_DIR}/_04_indices/clearness_indices"
 
-# --- Plantillas de rutas por feature (usar {LT} como placeholder) --
-# Se rellenan en tiempo de ejecución con el launch time correspondiente
+# --- Per-feature path templates (use {LT} as placeholder) ----------
+# Filled at runtime with the corresponding launch time
 FEAT_KC_TEMPLATE          = f"{CSI_INDEX_DIR}/clearsky_index_GFS_{{LT}}.nc"
 FEAT_KS_TEMPLATE          = f"{CLEARNESS_INDEX_DIR}/clearness_index_GFS_{{LT}}.nc"
 FEAT_DSWRF1_TEMPLATE      = f"{DSWRF1_UNCLIPPED_DIR}/dswrf1_{{LT}}.nc"
@@ -200,116 +200,116 @@ FEAT_HGT_TEMPLATE         = f"{PREP_DATA_DIR}/_08_HGT_cloud_ceiling/HGT_cloud_ce
 FEAT_WIND10M_TEMPLATE     = f"{PREP_DATA_DIR}/_09_Wind10m/Wind10m_{{LT}}.nc"
 FEAT_SUNSD_TEMPLATE       = f"{PREP_DATA_DIR}/_11_SUNSD/SUNSD_minutes_{{LT}}.nc"
 
-# --- Parámetros de clipping de radiación ---------------------------
-CLIP_MIN_DEN = 2    # Umbral mínimo (W/m²): valores por debajo se fijan a 0
-CLIP_SEED    = 42   # Semilla aleatoria para el jitter al reemplazar excedencias
+# --- Radiation clipping parameters ---------------------------------
+CLIP_MIN_DEN = 2    # Minimum threshold (W/m²): values below this are set to 0
+CLIP_SEED    = 42   # Random seed for jitter when replacing exceedances
 
-# --- Archivo de elevación y perfil de horizonte --------------------
-# Raster TIF descargado de OpenTopography para la celda de Medellín
+# --- Elevation and horizon profile file ----------------------------
+# TIF raster downloaded from OpenTopography for the Medellín grid cell
 HORIZON_FILE    = "_3_Data_preparation_for_LSTM/Preparation_data/Elevation_data/Medellin.tif"
-# Directorio de salida de la radiación de cielo despejado Ineichen
+# Output directory for Ineichen clear-sky radiation
 CSI_GHI_OUT_DIR = f"{PREP_DATA_DIR}/_01_CSI_EXT_radiation/Ineichen_GHI"
 
-# --- Parámetros de corrección de sesgo zenital (bias correction) ---
-# El modelo Ineichen subestima la GHI a ángulos cenitales altos (> 60°)
-ZENITH_CORR      = True    # Activar corrección de sesgo zenital (True/False)
-ZENITH_ALPHA     = 0.003   # Factor de incremento por grado de cénit (0.3 % por grado)
-ZENITH_THRESHOLD = 60      # Ángulo cenital a partir del cual se aplica la corrección
+# --- Zenith bias correction parameters ----------------------------
+# The Ineichen model underestimates GHI at high zenith angles (> 60°)
+ZENITH_CORR      = True    # Enable zenith bias correction (True/False)
+ZENITH_ALPHA     = 0.003   # Correction increment per degree of zenith (0.3 % per degree)
+ZENITH_THRESHOLD = 60      # Zenith angle above which the correction is applied
 
 
 # ===================================================================
-# _4_LSTM_modules  –  Red neuronal Bi-LSTM
+# _4_LSTM_modules  –  Bi-LSTM neural network
 # ===================================================================
 
 LSTM_DIR = "_4_LSTM_modules"
 
-# --- Archivos de secuencias preparadas (.npz) ----------------------
-# Secuencias multi-feature con los 4 launch times (archivo principal)
+# --- Prepared sequence files (.npz) --------------------------------
+# Multi-feature sequences with all 4 launch times (main file)
 SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym24.npz"
-# Archivo de secuencias de prueba (sin extensión; np.save añade .npy)
+# Test sequence file (no extension; np.save appends .npy)
 SEQ_NPZ_TEST_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
 
-# --- Directorio de corridas de entrenamiento -----------------------
+# --- Training run directory ----------------------------------------
 RUNS_DIR = f"{LSTM_DIR}/_runs/4launch_multfeat_sym"
 
-# Mejor modelo entrenado (pesos del checkpoint con menor pérdida de validación)
+# Best trained model (checkpoint weights with the lowest validation loss)
 BEST_MODEL_FILE = (
     f"{RUNS_DIR}/4launch_Multfeat_sym24_numl3_hidden96_20250701_153709/best_model.pt"
 )
 
-# --- Archivos de salida de evaluación ------------------------------
-# CSV con predicciones desescaladas para todos los splits (train/val/test)
+# --- Evaluation output files ---------------------------------------
+# CSV with de-scaled predictions for all splits (train/val/test)
 CSV_OUT = f"{LSTM_DIR}/Evaluation/Sym24_predictions_full.csv"
 
-# --- Índices de test (timestamps del split de prueba) --------------
+# --- Test indices (timestamps for the test split) ------------------
 TEST_INDICES_DIR             = f"{LSTM_DIR}/test_indices"
-# Índices del experimento principal multi-feature simétrico
+# Indices for the main multi-feature symmetric experiment
 TEST_INDICES_FILE            = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_test"
-# Índices para comparación baseline (GFS vs SIATA, 1 launch time causal)
+# Indices for baseline comparison (GFS vs SIATA, 1 causal launch time)
 TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24_CSI_0100.npy"
 
 
 # ===================================================================
-# HIPERPARÁMETROS DE LA RED BI-LSTM
+# BI-LSTM NETWORK HYPERPARAMETERS
 # ===================================================================
 
-N_FEAT     = 69     # Número de features de entrada (4 LT × variables + meta)
-HIDDEN     = 96     # Dimensión del estado oculto de la LSTM
-NUM_LAYERS = 3      # Número de capas LSTM apiladas
-DROPOUT    = 0.25   # Tasa de dropout entre capas (regularización)
-BATCH_SIZE = 128    # Tamaño de batch para inferencia y entrenamiento
+N_FEAT     = 69     # Number of input features (4 LT × variables + meta)
+HIDDEN     = 96     # Hidden state dimension of the LSTM
+NUM_LAYERS = 3      # Number of stacked LSTM layers
+DROPOUT    = 0.25   # Dropout rate between layers (regularisation)
+BATCH_SIZE = 128    # Batch size for inference and training
 
 
 # ===================================================================
-# PARÁMETROS DE ENTRENAMIENTO Y COMPORTAMIENTO DEL TRAINER
+# TRAINING AND TRAINER BEHAVIOUR PARAMETERS
 # ===================================================================
 
-LR_INIT     = 1e-3   # Tasa de aprendizaje inicial (AdamW)
-MIN_LR      = 1e-6   # Tasa de aprendizaje mínima permitida por el scheduler
-EPOCHS      = 50     # Número máximo de épocas de entrenamiento
-L2_LAMBDA   = 10e-4  # Regularización L2 (weight decay en AdamW)
-EARLY_STOP  = 25     # Paciencia de early stopping (épocas sin mejora)
-LR_FACTOR   = 0.5    # Factor de reducción de LR en el scheduler ReduceLROnPlateau
-LR_PATIENCE = 4      # Paciencia del scheduler antes de reducir LR
+LR_INIT     = 1e-3   # Initial learning rate (AdamW)
+MIN_LR      = 1e-6   # Minimum learning rate allowed by the scheduler
+EPOCHS      = 50     # Maximum number of training epochs
+L2_LAMBDA   = 10e-4  # L2 regularisation (weight decay in AdamW)
+EARLY_STOP  = 25     # Early stopping patience (epochs without improvement)
+LR_FACTOR   = 0.5    # LR reduction factor in the ReduceLROnPlateau scheduler
+LR_PATIENCE = 4      # Scheduler patience before reducing LR
 
-# Función de activación de salida de la Bi-LSTM
-# "sigmoid" → salida acotada en (0, 1), adecuado cuando el target es el CSI normalizado
-# "linear"  → sin activación, adecuado cuando el target no está normalizado en [0,1]
+# Output activation function of the Bi-LSTM
+# "sigmoid" → output bounded in (0, 1), suitable when the target is the normalised CSI
+# "linear"  → no activation, suitable when the target is not normalised to [0, 1]
 ACTIVATION = "sigmoid"
 
-# Método de desescalado para convertir predicciones normalizadas a W/m²
-# "physical" → multiplica por la radiación de cielo despejado del mismo instante
-# "minmax"   → inversa de la normalización min-max
-# "z_score"  → inversa de la estandarización (media=0, std=1)
-# "average"  → inversa de la normalización por media
+# De-scaling method to convert normalised predictions to W/m²
+# "physical" → multiplies by the clear-sky radiation at the same instant
+# "minmax"   → inverse of min-max normalisation
+# "z_score"  → inverse of standardisation (mean=0, std=1)
+# "average"  → inverse of mean normalisation
 DESCALER_METHOD = "physical"
 
-# Aplicar máscara de noche durante el entrenamiento
-# True  → las predicciones nocturnas se fijan a 0 y no contribuyen al gradiente
-# False → el modelo aprende todas las horas por igual (incluyendo la noche)
+# Apply night mask during training
+# True  → night-time predictions are set to 0 and do not contribute to the gradient
+# False → the model learns all hours equally (including night-time)
 USE_DAYMASK = True
 
-# MSE del modelo de referencia GFS (calculado con Comparison_before_NN.py)
-# Se usa para calcular el Skill Score: SS = 1 - MSE_modelo / MSE_GFS
+# MSE of the GFS reference model (computed with Comparison_before_NN.py)
+# Used to calculate the Skill Score: SS = 1 - MSE_model / MSE_GFS
 MSE_BASELINE_R = 22322.349260
 
 
 # ===================================================================
-# PARÁMETROS DE SECUENCIA TEMPORAL
+# TEMPORAL SEQUENCE PARAMETERS
 # ===================================================================
 
-SEQ_MODE     = "symmetric"  # Estrategia de ventana: "symmetric" o "causal"
-K_LEFT       = 24            # Horas hacia atrás en ventana simétrica
-K_RIGHT      = 24            # Horas hacia adelante en ventana simétrica
-K            = 24            # Horas de look-back en modo causal
-OFF          = None          # Posición del target en ventana simétrica (None = K_LEFT)
-VAL_SPLIT    = 0.15          # Fracción de datos para validación (15 %)
-TEST_SPLIT   = 0.15          # Fracción de datos para prueba (15 %)
-SHUFFLE_SEED = 16            # Semilla para el shuffle antes del split
+SEQ_MODE     = "symmetric"  # Window strategy: "symmetric" or "causal"
+K_LEFT       = 24            # Hours look-back in symmetric window
+K_RIGHT      = 24            # Hours look-ahead in symmetric window
+K            = 24            # Look-back hours in causal mode
+OFF          = None          # Target position in symmetric window (None = K_LEFT)
+VAL_SPLIT    = 0.15          # Fraction of data for validation (15 %)
+TEST_SPLIT   = 0.15          # Fraction of data for test (15 %)
+SHUFFLE_SEED = 16            # Seed for the shuffle before splitting
 
-# --- Canales meta adicionales en el vector de features -------------
-INCLUDE_STEP    = True   # Diferencia (observation_time − launch_time) como feature
-INCLUDE_DAYFLAG = False  # Indicador binario de día/noche como feature
-ADD_HOD         = False  # Hora del día (Hour of Day) como feature
-ADD_DOY         = False  # Día del año (Day of Year) como feature
-ADD_ZENITH      = True   # Ángulo cenital solar calculado con pvlib como feature
+# --- Additional meta channels in the feature vector ----------------
+INCLUDE_STEP    = True   # Difference (observation_time − launch_time) as a feature
+INCLUDE_DAYFLAG = False  # Binary day/night indicator as a feature
+ADD_HOD         = False  # Hour of Day as a feature
+ADD_DOY         = False  # Day of Year as a feature
+ADD_ZENITH      = True   # Solar zenith angle computed with pvlib as a feature

@@ -37,9 +37,9 @@ def list_daytime_exceedances(
     df = pd.DataFrame({"GHI": s_gfs, "Clear": s_clear}).dropna()
 
     # Filter daytime values
-    df_day = df[df["Clear"] >= clear_threshold].copy()  # Jetzt definiert
+    df_day = df[df["Clear"] >= clear_threshold].copy()
     df_day["Diff"] = df_day["GHI"] - df_day["Clear"]
-    
+
     # Find exceedances
     mask = df_day["Diff"] > diff_threshold
     df_exceed = df_day.loc[mask, ["GHI", "Clear", "Diff"]]
@@ -49,27 +49,27 @@ def list_daytime_exceedances(
     count_exceed = len(df_exceed)
     total_day = len(df_day)
     pct_exceed = count_exceed / total_day if total_day else float('nan')
-  
+
 
     # Calculate hourly breakdown
     def get_hourly_stats(df_exceedances, df_daytime):
         hours = pd.DataFrame(index=range(24), columns=["Count", "Total"])
-        
+
         # Exceedance counts per hour
         ex_hours = df_exceedances.index.hour.value_counts()
         hours["Count"] = ex_hours.reindex(hours.index, fill_value=0)
-        
+
         # Total daytime points per hour
         day_hours = df_daytime.index.hour.value_counts()
         hours["Total"] = day_hours.reindex(hours.index, fill_value=0)
-        
+
         hours["Percentage"] = hours["Count"] / hours["Total"]
         hours.index.name = "Hour"
         return hours.reset_index()
 
     df_hourly = get_hourly_stats(df_exceed, df_day)
 
-    return df_exceed, count_exceed, pct_exceed, df_hourly, df_day  # df_day hinzugefügt
+    return df_exceed, count_exceed, pct_exceed, df_hourly, df_day
 
 if __name__ == "__main__":
     # === User configuration ===
@@ -80,8 +80,8 @@ if __name__ == "__main__":
 
     # Thresholds
     CLEAR_THRESHOLD = 0.0
-    DIFF_THRESHOLD  = 20   # untere Schwelle (wie gehabt)
-    HIGH_THRESHOLD  = 0.0  # neue obere Schwelle
+    DIFF_THRESHOLD  = 20   # lower bound
+    HIGH_THRESHOLD  = 0.0  # upper bound
 
     # Run analysis
     results = list_daytime_exceedances(
@@ -90,25 +90,25 @@ if __name__ == "__main__":
         clear_threshold=CLEAR_THRESHOLD,
         diff_threshold=DIFF_THRESHOLD
     )
-    df_exceed, count_exceed, pct_exceed, df_hourly, df_day = results  # df_day hinzugefügt
+    df_exceed, count_exceed, pct_exceed, df_hourly, df_day = results
 
-    # --- Anteil der Exceedances oberhalb HIGH_THRESHOLD ----------------
+    # --- Share of exceedances above HIGH_THRESHOLD -----------------
     high_count = (df_exceed["Diff"] > HIGH_THRESHOLD).sum()
     pct_high   = high_count / len(df_exceed) if len(df_exceed) else float('nan')
 
     # Print results
-    print(f"Total daytime points: {len(df_day)}")  # Jetzt korrekt
+    print(f"Total daytime points: {len(df_day)}")
     print(f"Exceedances (> {DIFF_THRESHOLD} W/m²): {count_exceed}")
     print(f"Exceedance percentage: {pct_exceed:.2%}\n")
     print(f"Exceedances (> {DIFF_THRESHOLD} W/m²): {count_exceed}")
-    print(f"  davon > {HIGH_THRESHOLD} W/m²: {high_count}  "
-          f"({pct_high:.2%} der Exceedances)")
-    print(f"Exceedance percentage (gesamt): {pct_exceed:.2%}\n")
+    print(f"  of which > {HIGH_THRESHOLD} W/m²: {high_count}  "
+          f"({pct_high:.2%} of exceedances)")
+    print(f"Exceedance percentage (total): {pct_exceed:.2%}\n")
 
-    
+
     print("Hourly statistics:")
     print(df_hourly.to_string(
-        index=False, 
+        index=False,
         formatters={
             "Percentage": "{:.1%}".format,
             "Count": "{:d}".format,
