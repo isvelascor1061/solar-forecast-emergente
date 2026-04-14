@@ -27,25 +27,29 @@ import numpy as np
 import xarray as xr
 import matplotlib.pyplot as plt
 
+from config import (
+    VAR_GFS_DSWRF_0100, VAR_GFS_DSWRF_0700, VAR_GFS_DSWRF_1300, VAR_GFS_DSWRF_1900,
+    VAR_SIATA_GHI,
+    DSWRF1_CSI_0100_FILE, DSWRF1_CSI_0700_FILE, DSWRF1_CSI_1300_FILE, DSWRF1_CSI_1900_FILE,
+    SIATA_GHI_FILE,
+)
+
 # ----------------------------------------------------------------------
 # 1)  File paths & user parameters
 # ----------------------------------------------------------------------
 CSV_FILE = "_4_LSTM_modules/Evaluation_after_LSTM/Sym12_predictions_full_descaled.csv"
 
-# Four launch times (0100 / 0700 / 1300 / 1900) -------------------------
+# Cuatro tiempos de lanzamiento (rutas y nombres de variable desde config)
 GFS_PATHS = [
-    "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_0100.nc",
-    "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_0700.nc",
-    "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_1300.nc",
-    "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_1900.nc",
+    DSWRF1_CSI_0100_FILE,
+    DSWRF1_CSI_0700_FILE,
+    DSWRF1_CSI_1300_FILE,
+    DSWRF1_CSI_1900_FILE,
 ]
-GFS_VARS  = ["dswrf1_0100", "dswrf1_0700", "dswrf1_1300", "dswrf1_1900"]
+GFS_VARS  = [VAR_GFS_DSWRF_0100, VAR_GFS_DSWRF_0700, VAR_GFS_DSWRF_1300, VAR_GFS_DSWRF_1900]
 
-NC_SIATA  = (
-    "_3_Data_preparation_for_LSTM/Preparation_data/_03_Siata_GHI/"
-    "Netcdf_Siata_GHI/GHI_CSI_clipped.nc"
-)
-VAR_SIATA = "GHI_clean"
+NC_SIATA  = SIATA_GHI_FILE    # ruta al .nc de SIATA (desde config)
+VAR_SIATA = VAR_SIATA_GHI     # siata_ghi → "GHI_clean"
 
 START = "2025-05-20 00:00"
 END   = "2025-05-20 23:59"

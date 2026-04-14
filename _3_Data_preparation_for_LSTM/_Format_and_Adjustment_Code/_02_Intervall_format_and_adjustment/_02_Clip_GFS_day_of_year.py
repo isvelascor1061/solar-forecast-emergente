@@ -182,6 +182,7 @@ if __name__ == "__main__":
     from config import (
         DSWRF1_UNCLIPPED_DIR, EXT_GHI_FILE, DSWRF1_EXT_DIR,
         EXT_VAR_NAME, CLIP_MIN_DEN, CLIP_SEED,
+        VAR_GFS_DSWRF_TEMPLATE,
     )
 
     launch_time = "1900"  # Launch time a procesar (0100, 0700, 1300 o 1900)
@@ -194,8 +195,8 @@ if __name__ == "__main__":
     cleaner = NetCDFDataCleaner(
         gfs_path=GFS_PATH,
         csi_path=CSI_PATH,
-        gfs_var=f"dswrf1_{launch_time}",
-        csi_var=EXT_VAR_NAME,
+        gfs_var=VAR_GFS_DSWRF_TEMPLATE.format(LT=launch_time),   # gfs_dswrf → "dswrf1_{LT}"
+        csi_var=EXT_VAR_NAME,                                      # ref_ext_ghi → "extraterrestrial_ghi"
         min_den=CLIP_MIN_DEN,   # Umbral mínimo de radiación
         seed=CLIP_SEED,         # Semilla para el jitter
     )

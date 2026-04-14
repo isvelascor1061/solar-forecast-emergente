@@ -192,10 +192,12 @@ OUTPUT_DIR  = (
 OUTPUT_FILE = "GHI_EXT_clipped.nc"
 
 if __name__ == "__main__":
+    from config import EXT_VAR_NAME   # ref_ext_ghi → "extraterrestrial_ghi"
+
     cleaner = NetCDFDataCleaner(
         siata_path=SIATA_PATH,
         clearsky_path=CLEARSKY_PATH,
-        clearsky_var="extraterrestrial_ghi",
+        clearsky_var=EXT_VAR_NAME,
     )
     cleaner.process(OUTPUT_DIR, OUTPUT_FILE)
     

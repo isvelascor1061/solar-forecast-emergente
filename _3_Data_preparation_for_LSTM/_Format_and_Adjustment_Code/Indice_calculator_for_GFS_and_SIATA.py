@@ -148,15 +148,21 @@ class IndexCalculator:
 # Minimal Example
 # -----------------------------------------------------------------------------
 if __name__ == "__main__":
-    launch_time = "1300"
+    import os
+    from config import (
+        SIATA_GHI_FILE, SIATA_GHI_VAR,
+        CSI_GHI_FILE, CSI_VAR_NAME,
+        CSI_INDEX_DIR, SIATA_CSI_FILE, SIATA_CSI_VAR,
+    )
+
     calculator = IndexCalculator(
-        ghi_path="_3_Data_preparation_for_LSTM/Preparation_data/_03_Siata_GHI/Netcdf_Siata_GHI/GHI_CSI_clipped.nc",
-        ref_path="_3_Data_preparation_for_LSTM/Preparation_data/_01_CSI_EXT_radiation/Ineichen_GHI/CSI_GHI_grid25_avg_with_horizon_and_enhancement_with_bias_correct2.nc",
-        out_dir="_3_Data_preparation_for_LSTM/Preparation_data/_04_indices/clear_sky_indices",
-        out_file=f"clearsky_index_Siata.nc",
-        ghi_var=f"GHI_clean",
-        ref_var="clear_sky_ghi",
-        index_name=f"clearsky_index_Siata",
+        ghi_path=SIATA_GHI_FILE,
+        ref_path=CSI_GHI_FILE,
+        out_dir=CSI_INDEX_DIR,
+        out_file=os.path.basename(SIATA_CSI_FILE),
+        ghi_var=SIATA_GHI_VAR,        # siata_ghi → "GHI_clean"
+        ref_var=CSI_VAR_NAME,          # ref_clearsky_ghi → "clear_sky_ghi"
+        index_name=SIATA_CSI_VAR,      # siata_csi → "clearsky_index_Siata"
     )
     calculator.process()
     

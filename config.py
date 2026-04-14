@@ -11,6 +11,50 @@ Uso:
 """
 
 # ===================================================================
+# CONVENCIÓN DE NOMBRES DE VARIABLES EN NETCDF
+# ===================================================================
+# Esta sección centraliza todos los nombres de variables que aparecen
+# dentro de los archivos NetCDF del proyecto, según la convención
+# acordada para el Pipeline Solar Medellín (Proyecto Emergente).
+#
+# Esquema de prefijos:
+#   gfs_dswrf_acum   → Radiación GFS *acumulada* (variable cruda del servidor, sdswrf)
+#   gfs_dswrf        → Radiación GFS *desacumulada* a intervalos de 1 h (genérica)
+#   gfs_dswrf_<LT>   → Ídem, específica al tiempo de lanzamiento (0100/0700/1300/1900)
+#   gfs_csi          → Clear-Sky Index GFS  = DSWRF_GFS / Clear-Sky Ineichen
+#   gfs_kc           → Clearness Index GFS  = DSWRF_GFS / Radiación extraterrestre
+#   siata_ghi        → GHI observada SIATA, ya limpiada (sin excedencias de cielo despejado)
+#   siata_csi        → Clear-Sky Index SIATA = GHI_SIATA / Clear-Sky Ineichen
+#   ref_clearsky_ghi → Radiación de cielo despejado calculada con el modelo Ineichen
+#   ref_ext_ghi      → Radiación extraterrestre (límite físico superior de la atmósfera)
+#
+# NOTA: Los nombres de variable DENTRO de los archivos .nc existentes NO se
+#       modifican para no invalidar datos ya generados. Las constantes VAR_*
+#       documentan a qué concepto físico corresponde cada string y sirven
+#       como fuente única de verdad en todos los scripts Python del pipeline.
+# ===================================================================
+
+# — Radiación GFS —
+VAR_GFS_DSWRF_ACUM     = "sdswrf"                    # GFS acumulado (variable del servidor NOAA)
+VAR_GFS_DSWRF          = "dswrf1"                    # GFS desacumulado genérico (sin LT específico)
+VAR_GFS_DSWRF_TEMPLATE = "dswrf1_{LT}"               # Plantilla por LT: .format(LT="0100")
+VAR_GFS_DSWRF_0100     = "dswrf1_0100"               # GFS desacumulado, lanzamiento 01:00 h
+VAR_GFS_DSWRF_0700     = "dswrf1_0700"               # GFS desacumulado, lanzamiento 07:00 h
+VAR_GFS_DSWRF_1300     = "dswrf1_1300"               # GFS desacumulado, lanzamiento 13:00 h
+VAR_GFS_DSWRF_1900     = "dswrf1_1900"               # GFS desacumulado, lanzamiento 19:00 h
+VAR_GFS_CSI_TEMPLATE   = "clearsky_index_GFS_{LT}"  # CSI GFS por LT (DSWRF / Clear-Sky Ineichen)
+VAR_GFS_KC_TEMPLATE    = "clearness_index_GFS_{LT}" # KC GFS por LT (DSWRF / Extraterrestre)
+
+# — Radiación observada SIATA —
+VAR_SIATA_GHI = "GHI_clean"            # GHI medida SIATA, limpiada de excedencias
+VAR_SIATA_CSI = "clearsky_index_Siata" # Clear-Sky Index de SIATA (GHI_SIATA / Ineichen)
+
+# — Referencias solares (modelos físicos) —
+VAR_REF_CLEARSKY_GHI = "clear_sky_ghi"        # Modelo Ineichen con corrección de horizonte y sesgo
+VAR_REF_EXT_GHI      = "extraterrestrial_ghi" # Radiación en el techo de la atmósfera
+
+
+# ===================================================================
 # PARÁMETROS GEOGRÁFICOS Y TEMPORALES DE MEDELLÍN
 # ===================================================================
 
@@ -51,8 +95,8 @@ RAW_MULTGFS_1300_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_1300"   # Lanzamiento 13:
 RAW_MULTGFS_1900_DIR = f"{RAW_MULTGFS_DIR}/raw_MultGFS_1900"   # Lanzamiento 19:00 h local
 
 # --- Nombres de variables en los archivos del servidor S3 ----------
-GFS_VAR_RAW = "sdswrf"   # Variable acumulada de onda corta en el servidor (media de intervalo)
-GFS_VAR_OUT = "dswrf1"   # Variable horaria resultante tras desacumulación
+GFS_VAR_RAW = VAR_GFS_DSWRF_ACUM   # Variable acumulada de onda corta en el servidor (media de intervalo)
+GFS_VAR_OUT = VAR_GFS_DSWRF        # Variable horaria resultante tras desacumulación
 
 
 # ===================================================================
@@ -97,14 +141,14 @@ PREP_DATA_DIR = "_3_Data_preparation_for_LSTM/Preparation_data"
 # --- Radiación de referencia solar --------------------------------
 # Radiación extraterrestre (techo físico máximo de radiación)
 EXT_GHI_FILE = f"{PREP_DATA_DIR}/_01_CSI_EXT_radiation/Extraterrestrial_GHI/EXT_GHI_all.nc"
-EXT_VAR_NAME = "extraterrestrial_ghi"   # Nombre de la variable dentro del NetCDF
+EXT_VAR_NAME = VAR_REF_EXT_GHI   # Nombre de la variable dentro del NetCDF
 
 # Radiación de cielo despejado Ineichen (con corrección de horizonte y sesgo)
 CSI_GHI_FILE = (
     f"{PREP_DATA_DIR}/_01_CSI_EXT_radiation/Ineichen_GHI/"
     "CSI_GHI_grid25_avg_with_horizon_and_enhancement_with_bias_correct2.nc"
 )
-CSI_VAR_NAME = "clear_sky_ghi"   # Nombre de la variable de cielo despejado
+CSI_VAR_NAME = VAR_REF_CLEARSKY_GHI   # Nombre de la variable de cielo despejado
 
 # --- dswrf1: radiación GFS sin cortar, una serie temporal por LT --
 DSWRF1_UNCLIPPED_DIR = f"{PREP_DATA_DIR}/_02_GFS_dswrf1/Unclipped_merged_dswrf1"
@@ -126,13 +170,13 @@ DSWRF1_EXT_DIR = f"{PREP_DATA_DIR}/_02_GFS_dswrf1/GFS_merged_EXT_clipped"
 
 # --- Datos observados SIATA (irradiancia global horizontal medida) --
 SIATA_GHI_FILE = f"{PREP_DATA_DIR}/_03_Siata_GHI/Netcdf_Siata_GHI/GHI_CSI_clipped.nc"
-SIATA_GHI_VAR  = "GHI_clean"   # Nombre de la variable GHI observada
+SIATA_GHI_VAR  = VAR_SIATA_GHI   # Nombre de la variable GHI observada (SIATA limpiada)
 
 # --- Índices solares calculados ------------------------------------
 # Clear-sky index (kc): GHI_GFS / GHI_ClearSky  →  normalizado 0-1
 CSI_INDEX_DIR  = f"{PREP_DATA_DIR}/_04_indices/clear_sky_indices"
 SIATA_CSI_FILE = f"{CSI_INDEX_DIR}/clearsky_index_Siata.nc"   # Índice CSI de SIATA (target)
-SIATA_CSI_VAR  = "clearsky_index_Siata"
+SIATA_CSI_VAR  = VAR_SIATA_CSI
 
 # Clearness index (ks): GHI_GFS / GHI_Extraterrestre  →  normalizado 0-1
 CLEARNESS_INDEX_DIR = f"{PREP_DATA_DIR}/_04_indices/clearness_indices"

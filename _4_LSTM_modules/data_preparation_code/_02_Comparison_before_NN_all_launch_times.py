@@ -18,6 +18,13 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from scipy.stats import pearsonr
 import matplotlib.pyplot as plt
 
+from config import (
+    VAR_GFS_DSWRF_0100, VAR_GFS_DSWRF_0700, VAR_GFS_DSWRF_1300, VAR_GFS_DSWRF_1900,
+    VAR_SIATA_GHI,
+    DSWRF1_CSI_0100_FILE, DSWRF1_CSI_0700_FILE, DSWRF1_CSI_1300_FILE, DSWRF1_CSI_1900_FILE,
+    SIATA_GHI_FILE,
+)
+
 # ────────────────────────────────────────────────────────────────
 # 0)  German number formatting  (thousands = “.”, decimals = “, ”)
 # ────────────────────────────────────────────────────────────────
@@ -32,15 +39,16 @@ def fmt_de(value, prec: int = 5) -> str:
 # ────────────────────────────────────────────────────────────────
 PAIRS = [
     (
-        [  # ← four launch-time files
-            "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_0100.nc",
-            "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_0700.nc",
-            "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_1300.nc",
-            "_3_Data_preparation_for_LSTM/Preparation_data/_02_GFS_dswrf1/GFS_merged_CSI_clipped/dswrf1_CSI_1900.nc",
+        [  # ← four launch-time files (rutas desde config)
+            DSWRF1_CSI_0100_FILE,
+            DSWRF1_CSI_0700_FILE,
+            DSWRF1_CSI_1300_FILE,
+            DSWRF1_CSI_1900_FILE,
         ],
-        ["dswrf1_0100", "dswrf1_0700", "dswrf1_1300", "dswrf1_1900"],  # matching variable names
-        "_3_Data_preparation_for_LSTM/Preparation_data/_03_Siata_GHI/Netcdf_Siata_GHI/GHI_CSI_clipped.nc",
-        "GHI_clean",
+        # nombres de variable dentro de cada .nc (gfs_dswrf_<LT>)
+        [VAR_GFS_DSWRF_0100, VAR_GFS_DSWRF_0700, VAR_GFS_DSWRF_1300, VAR_GFS_DSWRF_1900],
+        SIATA_GHI_FILE,      # ruta al .nc de SIATA (desde config)
+        VAR_SIATA_GHI,       # siata_ghi → "GHI_clean"
         "Best-lead GFS-DSWRF1  vs  SIATA-GHI",
     )
 ]
