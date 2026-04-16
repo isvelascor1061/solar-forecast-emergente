@@ -156,7 +156,7 @@ def compute_day_mask(
     """
     ts_local = pd.to_datetime(timestamps) + pd.Timedelta(hours=tz_offset)
     hours    = ts_local.hour
-    mask     = ((hours > flag_start) & (hours < flag_end)).astype(float)
+    mask     = ((hours >= flag_end) & (hours <= flag_start)).astype(float)
     vals     = mask.values if hasattr(mask, "values") else mask
     return torch.tensor(vals, dtype=torch.float32)
 
