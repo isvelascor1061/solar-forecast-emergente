@@ -6,7 +6,7 @@ Author: Leonard Merl
 
 DESCALER tuples:
     • Choose the file that contains the physical/normalisation reference
-    • Choose the way it should be “descaled” later on (“physical”, “minmax”, …)
+    • Choose the way it should be "descaled" later on ("physical", "minmax", …)
     • Provide the variable name inside the NetCDF  (None → first data-var)
 """
 from __future__ import annotations
@@ -109,7 +109,7 @@ def compute_day_mask(timestamps, flag_start=5, flag_end=20, tz_offset=0):
     ----------
     timestamps  : DatetimeIndex | list[pd.Timestamp]
     flag_start / flag_end : hour boundaries (local time)
-    tz_offset   : hours to add (if data are UTC but “day” is local)
+    tz_offset   : hours to add (if data are UTC but "day" is local)
 
     Returns
     -------

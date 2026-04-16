@@ -14,7 +14,7 @@ network (e.g. an LSTM).
 Key design choices
 ------------------
 * **Per-launch block**  
-  For every launch time *LT* (e.g. “0100”, “0700”, “1300”, “1900”) the loader
+  For every launch time *LT* (e.g. "0100", "0700", "1300", "1900") the loader
   concatenates all requested variables plus the launch-to-observation `step`
   (in days) – if `include_step=True`.  
   Resulting block layout:

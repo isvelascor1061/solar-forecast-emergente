@@ -7,7 +7,7 @@ and prints all numbers in German number format (1.234.567,89).
 
 The script also supports a *set* of GFS launch-time files:  
 for every observation_time it automatically chooses the value
-with the **smallest positive lead-time** (“best lead” approach).
+with the **smallest positive lead-time** ("best lead" approach).
 """
 
 from pathlib import Path
@@ -26,7 +26,7 @@ from config import (
 )
 
 # ────────────────────────────────────────────────────────────────
-# 0)  German number formatting  (thousands = “.”, decimals = “, ”)
+# 0)  German number formatting  (thousands = ".", decimals = ", ")
 # ────────────────────────────────────────────────────────────────
 def fmt_de(value, prec: int = 5) -> str:
     """Return *value* as a German-style formatted string."""
@@ -89,7 +89,7 @@ def to_timeseries(da: xr.DataArray,
 
 
 # ────────────────────────────────────────────────────────────────
-# 4)  Build “best-lead” GFS series from several launch files
+# 4)  Build "best-lead" GFS series from several launch files
 # ────────────────────────────────────────────────────────────────
 def build_best_lead_series(
     gfs_paths,

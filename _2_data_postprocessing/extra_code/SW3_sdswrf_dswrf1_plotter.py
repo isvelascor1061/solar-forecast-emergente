@@ -52,7 +52,7 @@ ax.set_title("Intervallstrahlung vs. 1-Stunden Intervalle, [6.25/-75.5], 2021-09
 ax.legend()
 ax.grid(True, which="both", linestyle="--", alpha=0.3)
 
-# Nur Stunden anzeigen („02:00“, „06:00“, …)
+# Nur Stunden anzeigen („02:00", „06:00", …)
 ax.xaxis.set_major_formatter(mdates.DateFormatter("%H:%M"))
 fig.autofmt_xdate()
 

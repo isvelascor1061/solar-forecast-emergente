@@ -7,7 +7,7 @@ Author: leonardmerl
 Description
 -----------
 • Reads SIATA CSV files.
-• Converts negative ‘radiacion’ values to NaN.
+• Converts negative 'radiacion' values to NaN.
 • Aggregates to hourly resolution with special rules:
     – Hours 20–05 → radiation is forced to 0 W m⁻².
     – Hour 06 and 19 → missing minutes are set to 0, then the mean is taken.

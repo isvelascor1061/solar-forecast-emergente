@@ -53,32 +53,32 @@ launch_times = LAUNCH_TIMES
 
 feat_templates = [
         # --- Indices, already normalized 0-1 -----------------------------------------------
-       (“kc”,       FEAT_KC_TEMPLATE,     “clearsky_index_GFS_{LT}”,  “none”),
-       (“ks”,       FEAT_KS_TEMPLATE,     “clearness_index_GFS_{LT}”, “none”),
+       ("kc",       FEAT_KC_TEMPLATE,     "clearsky_index_GFS_{LT}",  "none"),
+       ("ks",       FEAT_KS_TEMPLATE,     "clearness_index_GFS_{LT}", "none"),
        # --- Radiation -----------------------------------------------------------
-       (“dswrf1”,   FEAT_DSWRF1_TEMPLATE, “dswrf1_{LT}”,              “min_max”),
-       (“dlwrf1”,   FEAT_DLWRF_TEMPLATE,  “dlwrf1_{LT}”,              “auto”),
+       ("dswrf1",   FEAT_DSWRF1_TEMPLATE, "dswrf1_{LT}",              "min_max"),
+       ("dlwrf1",   FEAT_DLWRF_TEMPLATE,  "dlwrf1_{LT}",              "auto"),
        # --- Atmosphere ----------------------------------------------------------
-       (“TMP_surface”,      FEAT_TMP_TEMPLATE,  “TMP_surface_{LT}”,      “auto”),
-       (“RH_2m”,            FEAT_RH_TEMPLATE,   “RH_2m_{LT}”,            “auto”),
-       (“CAPE_surface”,     FEAT_CAPE_TEMPLATE,  “CAPE_surface_{LT}”,     “auto”),
-       (“HPBL_surface”,     FEAT_HPBL_TEMPLATE,  “HPBL_surface_{LT}”,     “auto”),
-       (“PWAT_ent”,         FEAT_PWAT_TEMPLATE,  “PWAT_ent_{LT}”,         “min_max”),
+       ("TMP_surface",      FEAT_TMP_TEMPLATE,  "TMP_surface_{LT}",      "auto"),
+       ("RH_2m",            FEAT_RH_TEMPLATE,   "RH_2m_{LT}",            "auto"),
+       ("CAPE_surface",     FEAT_CAPE_TEMPLATE,  "CAPE_surface_{LT}",     "auto"),
+       ("HPBL_surface",     FEAT_HPBL_TEMPLATE,  "HPBL_surface_{LT}",     "auto"),
+       ("PWAT_ent",         FEAT_PWAT_TEMPLATE,  "PWAT_ent_{LT}",         "min_max"),
        # --- Clouds & Visibility ------------------------------------------------------
-       (“TCDC_ent”,         FEAT_TCDC_TEMPLATE,  “TCDC_ent_{LT}”,         “min_max”),
-       (“HCDC_ent”,         FEAT_HCDC_TEMPLATE,  “HCDC_high_{LT}”,        “min_max”),
-       (“MCDC_ent”,         FEAT_MCDC_TEMPLATE,  “MCDC_mid_{LT}”,         “min_max”),
-       (“LCDC_ent”,         FEAT_LCDC_TEMPLATE,  “LCDC_low_{LT}”,         “min_max”),
-       (“HGT_cloud_ceiling”,FEAT_HGT_TEMPLATE,   “HGT_cloud_ceiling_{LT}”,”auto”),
+       ("TCDC_ent",         FEAT_TCDC_TEMPLATE,  "TCDC_ent_{LT}",         "min_max"),
+       ("HCDC_ent",         FEAT_HCDC_TEMPLATE,  "HCDC_high_{LT}",        "min_max"),
+       ("MCDC_ent",         FEAT_MCDC_TEMPLATE,  "MCDC_mid_{LT}",         "min_max"),
+       ("LCDC_ent",         FEAT_LCDC_TEMPLATE,  "LCDC_low_{LT}",         "min_max"),
+       ("HGT_cloud_ceiling",FEAT_HGT_TEMPLATE,   "HGT_cloud_ceiling_{LT}","auto"),
        # --- Windspeed -----------------------------------------------------------------
-       (“Wind10m”,          FEAT_WIND10M_TEMPLATE,”Wind10m_{LT}”,          “min_max”),
+       ("Wind10m",          FEAT_WIND10M_TEMPLATE,"Wind10m_{LT}",          "min_max"),
        # --- Duration of sunshine ---------------------------------------------------
-       (“SUNSD_minutes”,    FEAT_SUNSD_TEMPLATE,  “SUNSD_minutes_{LT}”,    “min_max”),
+       ("SUNSD_minutes",    FEAT_SUNSD_TEMPLATE,  "SUNSD_minutes_{LT}",    "min_max"),
        ]
 
 target_path = SIATA_CSI_FILE
 target_var  = SIATA_CSI_VAR
-target_norm = “none”
+target_norm = "none"
 
 
 # Sequence parameters -------------------------------------------------

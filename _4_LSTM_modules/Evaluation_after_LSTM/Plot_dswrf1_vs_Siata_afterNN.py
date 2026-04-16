@@ -14,7 +14,7 @@ The script
 
 1. reads the full-set CSV produced by *run_best_bilstm_save_csv.py*,
 2. loads the SIATA reference series,
-3. builds a new “best lead” GFS series by scanning all four launch-time
+3. builds a new "best lead" GFS series by scanning all four launch-time
    NetCDF files and, for each observation_time, selecting the value with
    the shortest **positive** lead-time (using the **step** coordinate),
 4. merges the three series, restricts them to START–END and
@@ -144,7 +144,7 @@ def build_best_lead_series(gfs_paths, gfs_vars):
     lead_df = pd.concat(lead_frames, axis=1)
 
     min_lead  = lead_df.min(axis=1)
-    best_mask = lead_df.eq(min_lead, axis=0)            # True for “winner”
+    best_mask = lead_df.eq(min_lead, axis=0)            # True for "winner"
 
     best_vals = val_df.where(best_mask).bfill(axis=1).iloc[:, 0]
     best_vals.name = "gfs_raw"
