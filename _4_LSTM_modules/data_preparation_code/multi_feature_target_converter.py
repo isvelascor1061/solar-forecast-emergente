@@ -283,7 +283,7 @@ class MultiLaunchTimeLoader:
                 path = path_tpl.format(LT=lt)
                 var  = var_tpl.format(LT=lt)
             
-                ds = xr.open_dataset(path)
+                ds = xr.open_dataset(path, engine="h5netcdf")
                 da = ds[var].squeeze()
                 if da.ndim > 1:
                     dims = [d for d in da.dims if d != "observation_time"]
@@ -323,7 +323,7 @@ class MultiLaunchTimeLoader:
            
     
         # load target and align 
-        tgt_da = xr.open_dataset(self.target_path)[self.target_var].squeeze()
+        tgt_da = xr.open_dataset(self.target_path, engine="h5netcdf")[self.target_var].squeeze()
         if tgt_da.ndim > 1:
             dims = [d for d in tgt_da.dims if d != "observation_time"]
             tgt_da = tgt_da.mean(dim=dims)
