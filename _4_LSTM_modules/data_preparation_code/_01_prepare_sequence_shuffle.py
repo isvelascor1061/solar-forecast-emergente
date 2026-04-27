@@ -240,11 +240,11 @@ def main(indice_filepath: str):
     X_tr, y_tr, t_tr = X_seq[idx_tr], y_seq[idx_tr], times[idx_tr]
     X_va, y_va, t_va = X_seq[idx_va], y_seq[idx_va], times[idx_va]
     X_te, y_te, t_te = X_seq[idx_te], y_seq[idx_te], times[idx_te]
-    print(f"Split → train={len(idx_tr)}, val={len(idx_va)}, test={len(idx_te)}")
+    print(f"Split -> train={len(idx_tr)}, val={len(idx_va)}, test={len(idx_te)}")
 
     # ---- 5) Persist test timestamps ---------------------------------------
     np.save(indice_filepath, t_te.values)
-    print(f"Test indices saved → {len(t_te):,} timestamps")
+    print(f"Test indices saved -> {len(t_te):,} timestamps")
 
     # ---- 6) Save everything to .npz ---------------------------------------
     os.makedirs(os.path.dirname(OUT_NPZ), exist_ok=True)
