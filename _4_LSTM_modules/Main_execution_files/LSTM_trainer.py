@@ -73,7 +73,7 @@ from config import (
 # RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
 # Descriptive name for the run (a timestamp is appended automatically)
-RUN_NAME = "4launch_Multfeat_sym24_BiLSTM"
+RUN_NAME = "4launch_Multfeat_sym18_BiLSTM_attn"
 
 # Path to the .npz file with the prepared sequences
 SEQ_NPZ = SEQ_NPZ_FILE
@@ -92,18 +92,21 @@ os.makedirs(RUN_DIR, exist_ok=True)
 
 # Dictionary with all run artefact paths
 PATHS = dict(
-    model       = os.path.join(RUN_DIR, "best_model.pt"),
-    csv_n       = os.path.join(RUN_DIR, "pred_norm.csv"),
-    csv_r       = os.path.join(RUN_DIR, "pred_real.csv"),
-    loss        = os.path.join(RUN_DIR, "loss_curve.png"),
-    scatter_n   = os.path.join(RUN_DIR, "scatter_norm.png"),
-    scatter_r   = os.path.join(RUN_DIR, "scatter_real.png"),
-    hist_n      = os.path.join(RUN_DIR, "hist_norm.png"),
-    hist_r      = os.path.join(RUN_DIR, "hist_real.png"),
-    hist_n_zeros= os.path.join(RUN_DIR, "hist_norm_without_zeros.png"),
-    hist_r_zeros= os.path.join(RUN_DIR, "hist_real_without_zeros.png"),
-    summary     = os.path.join(RUN_DIR, "summary.png"),
-    report      = os.path.join(RUN_DIR, "report.txt"),
+    model        = os.path.join(RUN_DIR, "best_model.pt"),
+    csv_n        = os.path.join(RUN_DIR, "pred_norm.csv"),
+    csv_r        = os.path.join(RUN_DIR, "pred_real.csv"),
+    loss         = os.path.join(RUN_DIR, "loss_curve.png"),
+    scatter_n    = os.path.join(RUN_DIR, "scatter_norm.png"),
+    scatter_r    = os.path.join(RUN_DIR, "scatter_real.png"),
+    hist_n       = os.path.join(RUN_DIR, "hist_norm.png"),
+    hist_r       = os.path.join(RUN_DIR, "hist_real.png"),
+    hist_n_zeros = os.path.join(RUN_DIR, "hist_norm_without_zeros.png"),
+    hist_r_zeros = os.path.join(RUN_DIR, "hist_real_without_zeros.png"),
+    summary      = os.path.join(RUN_DIR, "summary.png"),
+    report       = os.path.join(RUN_DIR, "report.txt"),
+    # Attention weights for the test split — shape (n_test, seq_len)
+    # Can be loaded later for visualisation with np.load()
+    attn_weights = os.path.join(RUN_DIR, "attn_weights_test.npy"),
 )
 
 
@@ -504,15 +507,24 @@ def main():
     model.load_state_dict(torch.load(PATHS["model"]))
     model.eval()
 
-    preds_list = []
+    preds_list  = []
+    attn_list   = []   # attention weights per batch, shape (B, seq_len)
     with torch.no_grad():
         for xb, _, idx in te_dl:
-            preds = model(xb)
+            # Request attention weights from the model alongside predictions
+            preds, attn = model(xb, return_attention=True)
             if USE_DAYMASK:
                 # Hard-clip is also applied during inference for night hours
                 preds = preds * mask_test[idx]
             preds_list.append(preds.numpy())
-    y_pred = np.concatenate(preds_list)   # (n_test,)
+            attn_list.append(attn.numpy())
+
+    y_pred       = np.concatenate(preds_list)   # (n_test,)
+    attn_weights = np.concatenate(attn_list)    # (n_test, seq_len)
+
+    # Persist attention weights so they can be loaded for visualisation
+    np.save(PATHS["attn_weights"], attn_weights)
+    print(f"Attention weights saved -> shape {attn_weights.shape}")
 
     # Compute metrics in normalised space
     residuals_n          = y_te - y_pred

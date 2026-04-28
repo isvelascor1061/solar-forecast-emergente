@@ -225,7 +225,7 @@ LSTM_DIR = "_4_LSTM_modules"
 
 # --- Prepared sequence files (.npz) --------------------------------
 # Multi-feature sequences with all 4 launch times (main file)
-SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"
+SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"  # sym18 + attention run
 # Test sequence file (no extension; np.save appends .npy)
 SEQ_NPZ_TEST_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
 
@@ -254,21 +254,21 @@ TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24
 # ===================================================================
 
 N_FEAT     = 69     # Number of input features (4 LT × variables + meta)
-HIDDEN     = 192    # Hidden state dimension of the LSTM
-NUM_LAYERS = 1      # Number of stacked LSTM layers
-DROPOUT    = 0.128  # Dropout rate between layers (regularisation)
-BATCH_SIZE = 32     # Batch size for inference and training
+HIDDEN     = 96     # Hidden state dimension of the LSTM
+NUM_LAYERS = 3      # Number of stacked LSTM layers
+DROPOUT    = 0.25   # Dropout rate between layers (regularisation)
+BATCH_SIZE = 128    # Batch size for inference and training
 
 
 # ===================================================================
 # TRAINING AND TRAINER BEHAVIOUR PARAMETERS
 # ===================================================================
 
-LR_INIT     = 0.000102  # Initial learning rate (AdamW) — Optuna best
-MIN_LR      = 1e-6      # Minimum learning rate allowed by the scheduler
-EPOCHS      = 50        # Maximum number of training epochs
-L2_LAMBDA   = 10e-4     # L2 regularisation (weight decay in AdamW)
-EARLY_STOP  = 15        # Early stopping patience (epochs without improvement)
+LR_INIT     = 1e-3   # Initial learning rate (AdamW)
+MIN_LR      = 1e-6   # Minimum learning rate allowed by the scheduler
+EPOCHS      = 50     # Maximum number of training epochs
+L2_LAMBDA   = 10e-4  # L2 regularisation (weight decay in AdamW)
+EARLY_STOP  = 25     # Early stopping patience (epochs without improvement)
 LR_FACTOR   = 0.5    # LR reduction factor in the ReduceLROnPlateau scheduler
 LR_PATIENCE = 4      # Scheduler patience before reducing LR
 
@@ -299,8 +299,8 @@ MSE_BASELINE_R = 22322.349260
 # ===================================================================
 
 SEQ_MODE     = "sym18"  # Window strategy: "symmetric" or "causal"
-K_LEFT       = 18       # Hours look-back in symmetric window
-K_RIGHT      = 18       # Hours look-ahead in symmetric window
+K_LEFT       = 18            # Hours look-back in symmetric window
+K_RIGHT      = 18            # Hours look-ahead in symmetric window
 K            = 24            # Look-back hours in causal mode
 OFF          = None          # Target position in symmetric window (None = K_LEFT)
 VAL_SPLIT    = 0.15          # Fraction of data for validation (15 %)
