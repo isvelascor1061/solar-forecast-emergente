@@ -1,0 +1,105 @@
+[orchestrator] config.py patched -> NPZ=4launch_multfeat_sym12.npz, MODE=sym12
+
+============================================================
+[orchestrator] Starting training: sym12
+============================================================
+C:\Users\isabe\.conda\envs\Env_Solar\Lib\site-packages\torch\optim\lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+
+============================================================
+  Run: 4launch_Multfeat_sym24_BiLSTM
+  Data:   _4_LSTM_modules/Prepared_data/4launch_multfeat_sym12.npz
+  Activation:  sigmoid | De-scaling: physical | Night mask: True
+============================================================
+
+Input shape (train): (24897, 25, 69)
+Model parameters: 574,027
+Epochs:   0%|          | 0/50 [00:00<?, ?ep/s]                                              Epochs:   0%|          | 0/50 [00:35<?, ?ep/s]Epochs:   2%|2         | 1/50 [00:35<28:58, 35.47s/ep]                                                      Epochs:   2%|2         | 1/50 [01:10<28:58, 35.47s/ep]Epochs:   4%|4         | 2/50 [01:10<28:19, 35.41s/ep]                                                      Epochs:   4%|4         | 2/50 [01:49<28:19, 35.41s/ep]Epochs:   6%|6         | 3/50 [01:49<28:45, 36.72s/ep]                                                      Epochs:   6%|6         | 3/50 [02:23<28:45, 36.72s/ep]Epochs:   8%|8         | 4/50 [02:23<27:22, 35.71s/ep]                                                      Epochs:   8%|8         | 4/50 [02:56<27:22, 35.71s/ep]Epochs:  10%|#         | 5/50 [02:56<26:13, 34.97s/ep]                                                      Epochs:  10%|#         | 5/50 [03:54<26:13, 34.97s/ep]Epochs:  12%|#2        | 6/50 [03:54<31:15, 42.62s/ep]                                                      Epochs:  12%|#2        | 6/50 [04:30<31:15, 42.62s/ep]Epochs:  14%|#4        | 7/50 [04:30<28:57, 40.42s/ep]                                                      Epochs:  14%|#4        | 7/50 [05:03<28:57, 40.42s/ep]Epochs:  16%|#6        | 8/50 [05:03<26:43, 38.18s/ep]                                                      Epochs:  16%|#6        | 8/50 [05:37<26:43, 38.18s/ep]Epochs:  18%|#8        | 9/50 [05:37<25:09, 36.82s/ep]                                                      Epochs:  18%|#8        | 9/50 [06:10<25:09, 36.82s/ep]Epochs:  20%|##        | 10/50 [06:10<23:39, 35.50s/ep]                                                       Epochs:  20%|##        | 10/50 [06:43<23:39, 35.50s/ep]Epochs:  22%|##2       | 11/50 [06:43<22:38, 34.83s/ep]                                                       Epochs:  22%|##2       | 11/50 [07:35<22:38, 34.83s/ep]Epochs:  24%|##4       | 12/50 [07:35<25:23, 40.10s/ep]                                                       Epochs:  24%|##4       | 12/50 [08:27<25:23, 40.10s/ep]Epochs:  26%|##6       | 13/50 [08:27<26:53, 43.60s/ep]                                                       Epochs:  26%|##6       | 13/50 [09:16<26:53, 43.60s/ep]Epochs:  28%|##8       | 14/50 [09:16<27:12, 45.34s/ep]                                                       Epochs:  28%|##8       | 14/50 [10:00<27:12, 45.34s/ep]Epochs:  30%|###       | 15/50 [10:00<26:16, 45.03s/ep]                                                       Epochs:  30%|###       | 15/50 [10:47<26:16, 45.03s/ep]Epochs:  32%|###2      | 16/50 [10:47<25:43, 45.41s/ep]                                                       Epochs:  32%|###2      | 16/50 [11:30<25:43, 45.41s/ep]Epochs:  34%|###4      | 17/50 [11:30<24:41, 44.90s/ep]                                                       Epochs:  34%|###4      | 17/50 [12:12<24:41, 44.90s/ep]Epochs:  36%|###6      | 18/50 [12:12<23:29, 44.04s/ep]                                                       Epochs:  36%|###6      | 18/50 [13:01<23:29, 44.04s/ep]Epochs:  38%|###8      | 19/50 [13:01<23:24, 45.30s/ep]                                                       Epochs:  38%|###8      | 19/50 [13:43<23:24, 45.30s/ep]Epochs:  40%|####      | 20/50 [13:43<22:11, 44.37s/ep]                                                       Epochs:  40%|####      | 20/50 [14:24<22:11, 44.37s/ep]Epochs:  42%|####2     | 21/50 [14:24<20:59, 43.43s/ep]                                                       Epochs:  42%|####2     | 21/50 [15:04<20:59, 43.43s/ep]Epochs:  44%|####4     | 22/50 [15:04<19:50, 42.53s/ep]                                                       Epochs:  44%|####4     | 22/50 [15:45<19:50, 42.53s/ep]Epochs:  46%|####6     | 23/50 [15:45<18:51, 41.90s/ep]                                                       Epochs:  46%|####6     | 23/50 [16:27<18:51, 41.90s/ep]Epochs:  48%|####8     | 24/50 [16:27<18:08, 41.87s/ep]                                                       Epochs:  48%|####8     | 24/50 [17:06<18:08, 41.87s/ep]Epochs:  50%|#####     | 25/50 [17:06<17:08, 41.14s/ep]                                                       Epochs:  50%|#####     | 25/50 [17:39<17:08, 41.14s/ep]Epochs:  52%|#####2    | 26/50 [17:39<15:26, 38.62s/ep]                                                       Epochs:  52%|#####2    | 26/50 [18:12<15:26, 38.62s/ep]Epochs:  54%|#####4    | 27/50 [18:12<14:07, 36.83s/ep]                                                       Epochs:  54%|#####4    | 27/50 [18:44<14:07, 36.83s/ep]Epochs:  56%|#####6    | 28/50 [18:44<13:01, 35.51s/ep]                                                       Epochs:  56%|#####6    | 28/50 [19:16<13:01, 35.51s/ep]Epochs:  58%|#####8    | 29/50 [19:16<12:06, 34.61s/ep]                                                       Epochs:  58%|#####8    | 29/50 [20:06<12:06, 34.61s/ep]Epochs:  60%|######    | 30/50 [20:06<13:02, 39.13s/ep]                                                       Epochs:  60%|######    | 30/50 [20:43<13:02, 39.13s/ep]Epochs:  62%|######2   | 31/50 [20:43<12:11, 38.52s/ep]                                                       Epochs:  62%|######2   | 31/50 [21:17<12:11, 38.52s/ep]Epochs:  64%|######4   | 32/50 [21:17<11:05, 37.00s/ep]                                                       Epochs:  64%|######4   | 32/50 [21:52<11:05, 37.00s/ep]Epochs:  66%|######6   | 33/50 [21:52<10:19, 36.47s/ep]                                                       Epochs:  66%|######6   | 33/50 [22:26<10:19, 36.47s/ep]Epochs:  68%|######8   | 34/50 [22:26<09:31, 35.72s/ep]                                                       Epochs:  68%|######8   | 34/50 [23:00<09:31, 35.72s/ep]Epochs:  70%|#######   | 35/50 [23:00<08:46, 35.11s/ep]                                                       Epochs:  70%|#######   | 35/50 [23:33<08:46, 35.11s/ep]Epochs:  72%|#######2  | 36/50 [23:33<08:03, 34.57s/ep]                                                       Epochs:  72%|#######2  | 36/50 [24:06<08:03, 34.57s/ep]Epochs:  74%|#######4  | 37/50 [24:06<07:24, 34.22s/ep]                                                       Epochs:  74%|#######4  | 37/50 [24:39<07:24, 34.22s/ep]Epochs:  76%|#######6  | 38/50 [24:39<06:45, 33.79s/ep]                                                       Epochs:  76%|#######6  | 38/50 [25:12<06:45, 33.79s/ep]Epochs:  78%|#######8  | 39/50 [25:12<06:08, 33.51s/ep]                                                       Epochs:  78%|#######8  | 39/50 [25:45<06:08, 33.51s/ep]Epochs:  80%|########  | 40/50 [25:45<05:33, 33.39s/ep]                                                       Epochs:  80%|########  | 40/50 [26:18<05:33, 33.39s/ep]Epochs:  82%|########2 | 41/50 [26:18<04:58, 33.18s/ep]                                                       Epochs:  82%|########2 | 41/50 [26:50<04:58, 33.18s/ep]Epochs:  84%|########4 | 42/50 [26:50<04:23, 32.93s/ep]                                                       Epochs:  84%|########4 | 42/50 [27:22<04:23, 32.93s/ep]Epochs:  86%|########6 | 43/50 [27:22<03:49, 32.77s/ep]                                                       Epochs:  86%|########6 | 43/50 [27:55<03:49, 32.77s/ep]Epochs:  88%|########8 | 44/50 [27:55<03:15, 32.65s/ep]                                                       Epochs:  88%|########8 | 44/50 [28:27<03:15, 32.65s/ep]Epochs:  90%|######### | 45/50 [28:27<02:42, 32.56s/ep]                                                       Epochs:  90%|######### | 45/50 [28:59<02:42, 32.56s/ep]Epochs:  92%|#########2| 46/50 [28:59<02:09, 32.47s/ep]                                                       Epochs:  92%|#########2| 46/50 [29:32<02:09, 32.47s/ep]Epochs:  94%|#########3| 47/50 [29:32<01:37, 32.42s/ep]                                                       Epochs:  94%|#########3| 47/50 [30:05<01:37, 32.42s/ep]Epochs:  96%|#########6| 48/50 [30:05<01:05, 32.77s/ep]                                                       Epochs:  96%|#########6| 48/50 [30:38<01:05, 32.77s/ep]Epochs:  98%|#########8| 49/50 [30:38<00:32, 32.73s/ep]                                                       Epochs:  98%|#########8| 49/50 [31:44<00:32, 32.73s/ep]Epochs: 100%|##########| 50/50 [31:44<00:00, 42.80s/ep]Epochs: 100%|##########| 50/50 [31:44<00:00, 38.10s/ep]
+C:\Users\isabe\Projects\codigors\carpetasdetrabajo\_4_LSTM_modules\Main_execution_files\LSTM_trainer.py:504: FutureWarning: You are using `torch.load` with `weights_only=False` (the current default value), which uses the default pickle module implicitly. It is possible to construct malicious pickle data which will execute arbitrary code during unpickling (See https://github.com/pytorch/pytorch/blob/main/SECURITY.md#untrusted-models for more details). In a future release, the default value for `weights_only` will be flipped to `True`. This limits the functions that could be executed during unpickling. Arbitrary objects will no longer be allowed to be loaded via this mode unless they are explicitly allowlisted by the user via `torch.serialization.add_safe_globals`. We recommend you start setting `weights_only=True` for any use case where you don't have full control of the loaded file. Please open an issue on GitHub for any issues related to this experimental feature.
+  model.load_state_dict(torch.load(PATHS["model"]))
+[  1/50] train 0.02676 | val 0.02151 | lr 1.0e-03
+[  2/50] train 0.02179 | val 0.02128 | lr 1.0e-03
+[  3/50] train 0.02139 | val 0.02092 | lr 1.0e-03
+[  4/50] train 0.02096 | val 0.02098 | lr 1.0e-03
+[  5/50] train 0.02098 | val 0.02067 | lr 1.0e-03
+[  6/50] train 0.02082 | val 0.02081 | lr 1.0e-03
+[  7/50] train 0.02040 | val 0.02047 | lr 1.0e-03
+[  8/50] train 0.02054 | val 0.02050 | lr 1.0e-03
+[  9/50] train 0.02021 | val 0.02130 | lr 1.0e-03
+[ 10/50] train 0.02031 | val 0.02021 | lr 1.0e-03
+[ 11/50] train 0.02002 | val 0.02023 | lr 1.0e-03
+[ 12/50] train 0.01995 | val 0.02066 | lr 1.0e-03
+[ 13/50] train 0.01986 | val 0.02045 | lr 1.0e-03
+[ 14/50] train 0.01985 | val 0.02052 | lr 1.0e-03
+[ 15/50] train 0.01955 | val 0.01996 | lr 1.0e-03
+[ 16/50] train 0.01930 | val 0.02029 | lr 1.0e-03
+[ 17/50] train 0.01918 | val 0.02064 | lr 1.0e-03
+[ 18/50] train 0.01900 | val 0.02024 | lr 1.0e-03
+[ 19/50] train 0.01875 | val 0.02067 | lr 1.0e-03
+[ 20/50] train 0.01879 | val 0.02033 | lr 5.0e-04
+[ 21/50] train 0.01770 | val 0.01992 | lr 5.0e-04
+[ 22/50] train 0.01749 | val 0.01996 | lr 5.0e-04
+[ 23/50] train 0.01718 | val 0.02005 | lr 5.0e-04
+[ 24/50] train 0.01690 | val 0.02069 | lr 5.0e-04
+[ 25/50] train 0.01675 | val 0.02025 | lr 5.0e-04
+[ 26/50] train 0.01632 | val 0.02030 | lr 2.5e-04
+[ 27/50] train 0.01551 | val 0.01980 | lr 2.5e-04
+[ 28/50] train 0.01528 | val 0.01970 | lr 2.5e-04
+[ 29/50] train 0.01487 | val 0.01965 | lr 2.5e-04
+[ 30/50] train 0.01458 | val 0.02010 | lr 2.5e-04
+[ 31/50] train 0.01428 | val 0.01976 | lr 2.5e-04
+[ 32/50] train 0.01397 | val 0.01982 | lr 2.5e-04
+[ 33/50] train 0.01381 | val 0.01954 | lr 2.5e-04
+[ 34/50] train 0.01334 | val 0.01977 | lr 2.5e-04
+[ 35/50] train 0.01325 | val 0.02032 | lr 2.5e-04
+[ 36/50] train 0.01301 | val 0.02029 | lr 2.5e-04
+[ 37/50] train 0.01263 | val 0.01971 | lr 2.5e-04
+[ 38/50] train 0.01231 | val 0.02019 | lr 1.3e-04
+[ 39/50] train 0.01167 | val 0.01970 | lr 1.3e-04
+[ 40/50] train 0.01137 | val 0.02011 | lr 1.3e-04
+[ 41/50] train 0.01114 | val 0.02006 | lr 1.3e-04
+[ 42/50] train 0.01093 | val 0.02027 | lr 1.3e-04
+[ 43/50] train 0.01078 | val 0.02009 | lr 6.3e-05
+[ 44/50] train 0.01048 | val 0.02025 | lr 6.3e-05
+[ 45/50] train 0.01031 | val 0.02020 | lr 6.3e-05
+[ 46/50] train 0.01021 | val 0.02023 | lr 6.3e-05
+[ 47/50] train 0.00998 | val 0.02033 | lr 6.3e-05
+[ 48/50] train 0.01002 | val 0.02005 | lr 3.1e-05
+[ 49/50] train 0.00971 | val 0.02035 | lr 3.1e-05
+[ 50/50] train 0.00969 | val 0.02032 | lr 3.1e-05
+
+=== Evaluation — normalised space ===
+                 MSE: 0,0972
+                 MAE: 0,1761
+                  R2: 0,2575
+                Corr: 0,6352
+   Residual_Variance: 0,0856
+
+=== Evaluation — real space (W/m²) ===
+                 MSE: 32.161,3749
+                RMSE: 179,3359
+                 MAE: 87,8744
+                  R2: 0,6439
+                Corr: 0,8251
+   Residual_Variance: 30.159,2648
+          SkillScore: -0,4408
+
+All artefacts saved to: _4_LSTM_modules/_runs/4launch_multfeat_sym\4launch_Multfeat_sym24_BiLSTM_20260427_162607
+[orchestrator] sym12 finished — exit code 0
+[orchestrator] config.py patched -> NPZ=4launch_multfeat_sym18.npz, MODE=sym18
+
+============================================================
+[orchestrator] Starting training: sym18
+============================================================
+C:\Users\isabe\.conda\envs\Env_Solar\Lib\site-packages\torch\optim\lr_scheduler.py:62: UserWarning: The verbose parameter is deprecated. Please use get_last_lr() to access the learning rate.
+  warnings.warn(
+
+============================================================
+  Run: 4launch_Multfeat_sym24_BiLSTM
+  Data:   _4_LSTM_modules/Prepared_data/4launch_multfeat_sym18.npz
+  Activation:  sigmoid | De-scaling: physical | Night mask: True
+============================================================
+
+Input shape (train): (24889, 37, 69)
+Model parameters: 574,027
+Epochs:   0%|          | 0/50 [00:00<?, ?ep/s]                                              Epochs:   0%|          | 0/50 [01:45<?, ?ep/s]Epochs:   2%|2         | 1/50 [01:46<1:26:39, 106.10s/ep]                                                         Epochs:   2%|2         | 1/50 [03:14<1:26:39, 106.10s/ep]Epochs:   4%|4         | 2/50 [03:14<1:16:25, 95.52s/ep]                                                         Epochs:   4%|4         | 2/50 [04:08<1:16:25, 95.52s/ep]Epochs:   6%|6         | 3/50 [04:08<1:00:06, 76.73s/ep]                                                        Epochs:   6%|6         | 3/50 [05:02<1:00:06, 76.73s/ep]Epochs:   8%|8         | 4/50 [05:02<51:47, 67.56s/ep]                                                        Epochs:   8%|8         | 4/50 [05:56<51:47, 67.56s/ep]Epochs:  10%|#         | 5/50 [05:56<47:10, 62.90s/ep]                                                      Epochs:  10%|#         | 5/50 [06:51<47:10, 62.90s/ep]Epochs:  12%|#2        | 6/50 [06:51<44:10, 60.24s/ep]                                                      Epochs:  12%|#2        | 6/50 [07:41<44:10, 60.24s/ep]Epochs:  14%|#4        | 7/50 [07:41<40:43, 56.83s/ep]                                                      Epochs:  14%|#4        | 7/50 [08:29<40:43, 56.83s/ep]Epochs:  16%|#6        | 8/50 [08:29<37:48, 54.01s/ep]                                                      Epochs:  16%|#6        | 8/50 [09:16<37:48, 54.01s/ep]Epochs:  18%|#8        | 9/50 [09:16<35:28, 51.91s/ep]                                                      Epochs:  18%|#8        | 9/50 [10:09<35:28, 51.91s/ep]Epochs:  20%|##        | 10/50 [10:09<34:39, 52.00s/ep]                                                       Epochs:  20%|##        | 10/50 [11:30<34:39, 52.00s/ep]Epochs:  22%|##2       | 11/50 [11:30<39:42, 61.10s/ep]                                                       Epochs:  22%|##2       | 11/50 [12:58<39:42, 61.10s/ep]Epochs:  24%|##4       | 12/50 [12:58<43:51, 69.25s/ep]                                                       Epochs:  24%|##4       | 12/50 [14:08<43:51, 69.25s/ep]Epochs:  26%|##6       | 13/50 [14:08<42:50, 69.48s/ep]                                                       Epochs:  26%|##6       | 13/50 [15:18<42:50, 69.48s/ep]Epochs:  28%|##8       | 14/50 [15:18<41:43, 69.55s/ep]                                                       Epochs:  28%|##8       | 14/50 [16:25<41:43, 69.55s/ep]Epochs:  30%|###       | 15/50 [16:25<40:06, 68.76s/ep]                                                       Epochs:  30%|###       | 15/50 [17:38<40:06, 68.76s/ep]Epochs:  32%|###2      | 16/50 [17:38<39:42, 70.07s/ep]                                                       Epochs:  32%|###2      | 16/50 [18:41<39:42, 70.07s/ep]Epochs:  34%|###4      | 17/50 [18:41<37:22, 67.95s/ep]                                                       Epochs:  34%|###4      | 17/50 [19:33<37:22, 67.95s/ep]Epochs:  36%|###6      | 18/50 [19:33<33:40, 63.14s/ep]                                                       Epochs:  36%|###6      | 18/50 [20:23<33:40, 63.14s/ep]Epochs:  38%|###8      | 19/50 [20:23<30:31, 59.08s/ep]                                                       Epochs:  38%|###8      | 19/50 [21:11<30:31, 59.08s/ep]Epochs:  40%|####      | 20/50 [21:11<27:59, 55.99s/ep]                                                       Epochs:  40%|####      | 20/50 [22:01<27:59, 55.99s/ep]Epochs:  42%|####2     | 21/50 [22:01<26:05, 53.99s/ep]                                                       Epochs:  42%|####2     | 21/50 [22:48<26:05, 53.99s/ep]Epochs:  44%|####4     | 22/50 [22:48<24:15, 51.98s/ep]                                                       Epochs:  44%|####4     | 22/50 [2:51:56<24:15, 51.98s/ep]Epochs:  46%|####6     | 23/50 [2:51:56<20:24:44, 2721.65s/ep]                                                              Epochs:  46%|####6     | 23/50 [2:53:38<20:24:44, 2721.65s/ep]Epochs:  48%|####8     | 24/50 [2:53:38<13:58:44, 1935.57s/ep]                                                              Epochs:  48%|####8     | 24/50 [2:55:28<13:58:44, 1935.57s/ep]Epochs:  50%|#####     | 25/50 [2:55:28<9:38:12, 1387.70s/ep]                                                              Epochs:  50%|#####     | 25/50 [2:57:37<9:38:12, 1387.70s/ep]Epochs:  52%|#####2    | 26/50 [2:57:37<6:44:02, 1010.12s/ep]                                                             Epochs:  52%|#####2    | 26/50 [2:59:56<6:44:02, 1010.12s/ep]Epochs:  54%|#####4    | 27/50 [2:59:56<4:47:01, 748.77s/ep] 
