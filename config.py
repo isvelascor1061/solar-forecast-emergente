@@ -291,7 +291,7 @@ USE_DAYMASK = True
 
 # MSE of the GFS reference model (computed with Comparison_before_NN.py)
 # Used to calculate the Skill Score: SS = 1 - MSE_model / MSE_GFS
-MSE_BASELINE_R = 22322.349260
+MSE_BASELINE_R = 40761.472609
 
 
 # ===================================================================
