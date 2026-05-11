@@ -5,37 +5,43 @@ sensitivity_analysis.py
 =======================
 Architecture sensitivity grid search for the Bi-LSTM solar irradiance model.
 
-Tests all 25 combinations of:
+Tests all 15 combinations of:
     num_layers  : [3, 5, 7, 8, 10]
-    hidden_size : [64, 128, 256, 512, 1024]
+    hidden_size : [64, 128, 256]
 
-Fixed hyperparameters (taken from config.py, overriding only EPOCHS/EARLY_STOP):
+Fixed hyperparameters (from config.py):
     LR          = 0.001   (LR_INIT)
     BATCH_SIZE  = 128
     DROPOUT     = 0.25
-    EARLY_STOP  = 15      (overrides config default)
+    EARLY_STOP  = 15
     ACTIVATION  = "sigmoid"
     USE_DAYMASK = True
     DESCALER    = "physical"
+    MSE_BASELINE_R imported from config.py (daytime-only GFS baseline)
 
-Each combination trains for at most 20 epochs (early stopping patience = 15).
+Each combination trains for at most 35 epochs (early stopping patience = 15).
+
+Resume capability
+-----------------
+If sensitivity_results.csv already exists, combinations already present
+(matched by num_layers + hidden_size) are skipped automatically.
 
 Metrics reported on the test set
 ---------------------------------
-    RMSE_all     : RMSE over ALL hours (W/m²)
-    RMSE_day     : RMSE over DAYTIME hours only (clear_sky_ghi > 0)
-    R2_day       : R² over daytime hours only
-    SkillScore   : 1 − MSE_model_day / MSE_BASELINE_R  (daytime W/m² space)
-    n_params     : number of trainable parameters
-    epochs_run   : epochs actually trained (may be < 20 if early stop fired)
+    RMSE_all   : RMSE over ALL hours (W/m²)
+    RMSE_day   : RMSE over DAYTIME hours only (clear_sky_ghi > 0)
+    R2_day     : R² over daytime hours only
+    SkillScore : 1 − MSE_model_day / MSE_BASELINE_R  (daytime W/m² space)
+    n_params   : number of trainable parameters
+    epochs_run : epochs actually trained (may be < 35 if early stop fired)
 
 Outputs (written to sensitivity_results/ next to this script)
 --------------------------------------------------------------
     sensitivity_results.csv
     heatmap_rmse_day.png
     heatmap_skillscore.png
-    heatmap_r2_day.png
-    heatmap_rmse_all.png
+    lineplot_rmse_vs_hidden.png
+    lineplot_rmse_vs_layers.png
 
 Usage
 -----
@@ -44,7 +50,6 @@ Usage
 
 from __future__ import annotations
 
-import os
 import sys
 import time
 from pathlib import Path
@@ -80,19 +85,21 @@ from _4_LSTM_modules.NN_modules.BiLSTMRegressor import BiLSTMRegressor
 # SENSITIVITY GRID
 # ===========================================================================
 NUM_LAYERS_LIST  = [3, 5, 7, 8, 10]
-HIDDEN_SIZE_LIST = [64, 128, 256, 512, 1024]
+HIDDEN_SIZE_LIST = [64, 128, 256]
 
 # Training limits for the sensitivity sweep
-SWEEP_EPOCHS     = 20   # maximum epochs per combination
+SWEEP_EPOCHS     = 35   # maximum epochs per combination
 SWEEP_EARLY_STOP = 15   # early stopping patience
 
 # Output directory (relative to this script)
 OUT_DIR = Path(__file__).parent / "sensitivity_results"
 OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+CSV_PATH = OUT_DIR / "sensitivity_results.csv"
+
 
 # ===========================================================================
-# UTILITIES  (mirror of LSTM_trainer.py — kept local to avoid side-effects)
+# UTILITIES
 # ===========================================================================
 
 class SeqDS(Dataset):
@@ -119,10 +126,7 @@ def load_splits(path: str):
 
 
 def compute_day_mask(timestamps) -> torch.Tensor:
-    """
-    Binary mask: 1 = daytime, 0 = night.
-    Daytime is defined as FLAG_END <= local_hour <= FLAG_START (from config).
-    """
+    """Binary mask: 1 = daytime, 0 = night (FLAG_END <= local_hour <= FLAG_START)."""
     ts_local = pd.to_datetime(timestamps) + pd.Timedelta(hours=UTC_OFFSET)
     hours    = ts_local.hour
     mask     = ((hours >= FLAG_END) & (hours <= FLAG_START)).astype(float)
@@ -131,10 +135,7 @@ def compute_day_mask(timestamps) -> torch.Tensor:
 
 
 def load_clearsky_series(path: str, var: str) -> pd.Series:
-    """
-    Load the Ineichen clear-sky GHI reference as a pandas Series indexed
-    by observation_time.  Spatial dimensions are averaged if present.
-    """
+    """Load Ineichen clear-sky GHI as a Series indexed by observation_time."""
     ds = xr.open_dataset(path, engine="h5netcdf")
     da = ds[var]
     if {"lat", "lon"}.issubset(da.dims):
@@ -148,9 +149,32 @@ def load_clearsky_series(path: str, var: str) -> pd.Series:
 
 
 def descale_physical(csi: np.ndarray, times: np.ndarray, clearsky: pd.Series) -> np.ndarray:
-    """Multiply normalised CSI predictions by clear-sky GHI to get W/m²."""
+    """Multiply normalised CSI by clear-sky GHI to obtain W/m²."""
     csg_vals = clearsky.reindex(pd.DatetimeIndex(times)).values
     return csi * csg_vals
+
+
+def load_existing_results() -> set[tuple[int, int]]:
+    """
+    Return a set of (num_layers, hidden_size) tuples already present in
+    sensitivity_results.csv so they can be skipped.
+    """
+    if not CSV_PATH.exists():
+        return set()
+    df = pd.read_csv(CSV_PATH)
+    done = set(
+        zip(df["num_layers"].astype(int), df["hidden_size"].astype(int))
+    )
+    return done
+
+
+def append_result(record: dict) -> None:
+    """Append one result row to sensitivity_results.csv (create if needed)."""
+    row_df = pd.DataFrame([record])
+    if CSV_PATH.exists():
+        row_df.to_csv(CSV_PATH, mode="a", header=False, index=False, float_format="%.6f")
+    else:
+        row_df.to_csv(CSV_PATH, index=False, float_format="%.6f")
 
 
 # ===========================================================================
@@ -165,10 +189,7 @@ def train_one_combo(
     X_te, y_te, t_te,
     clearsky: pd.Series,
 ) -> dict:
-    """
-    Train a BiLSTM with the given num_layers / hidden_size and evaluate
-    it on the test set.  Returns a dict of metrics.
-    """
+    """Train one BiLSTM combo and return a dict of test-set metrics."""
     seq_len = X_tr.shape[1]
     n_feat  = X_tr.shape[2]
 
@@ -177,7 +198,7 @@ def train_one_combo(
     va_dl = DataLoader(SeqDS(X_va, y_va), BATCH_SIZE, shuffle=False, drop_last=False)
     te_dl = DataLoader(SeqDS(X_te, y_te), BATCH_SIZE, shuffle=False, drop_last=False)
 
-    # ---- Day masks (one value per sample) ----------------------------
+    # ---- Day masks ---------------------------------------------------
     mask_train = compute_day_mask(t_tr)
     mask_val   = compute_day_mask(t_va)
     mask_test  = compute_day_mask(t_te)
@@ -203,15 +224,14 @@ def train_one_combo(
     loss_fn = nn.MSELoss(reduction="none")
 
     # ---- Training loop -----------------------------------------------
-    best_val  = float("inf")
-    patience  = 0
+    best_val   = float("inf")
+    patience   = 0
     best_state = None
     epochs_run = 0
 
     for ep in range(1, SWEEP_EPOCHS + 1):
         epochs_run = ep
 
-        # Training
         model.train()
         train_loss = 0.0
         for xb, yb, idx in tr_dl:
@@ -229,7 +249,6 @@ def train_one_combo(
             train_loss += loss.item() * len(xb)
         train_loss /= len(tr_dl.dataset)
 
-        # Validation
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
@@ -246,7 +265,6 @@ def train_one_combo(
 
         scheduler.step(val_loss)
 
-        # Checkpoint best model
         if val_loss < best_val:
             best_val   = val_loss
             patience   = 0
@@ -256,7 +274,7 @@ def train_one_combo(
             if patience >= SWEEP_EARLY_STOP:
                 break
 
-    # ---- Inference on test set with best weights ---------------------
+    # ---- Inference on test set ---------------------------------------
     model.load_state_dict(best_state)
     model.eval()
 
@@ -268,62 +286,56 @@ def train_one_combo(
                 preds = preds * mask_test[idx]
             preds_list.append(preds.numpy())
 
-    y_pred_csi = np.concatenate(preds_list)   # normalised CSI in [0, 1]
+    y_pred_csi = np.concatenate(preds_list)
 
-    # ---- Descale to W/m² (physical method) ---------------------------
+    # ---- Descale to W/m² --------------------------------------------
     y_true_wm2 = descale_physical(y_te, t_te, clearsky)
     y_pred_wm2 = descale_physical(y_pred_csi, t_te, clearsky)
 
-    # ---- RMSE all hours ----------------------------------------------
+    # ---- RMSE all hours ---------------------------------------------
     rmse_all = float(np.sqrt(mean_squared_error(y_true_wm2, y_pred_wm2)))
 
-    # ---- Daytime mask (clear_sky_ghi > 0) ----------------------------
-    csg_te   = clearsky.reindex(pd.DatetimeIndex(t_te)).values
-    day_mask = csg_te > 0
-
-    y_true_day = y_true_wm2[day_mask]
-    y_pred_day = y_pred_wm2[day_mask]
-
-    # ---- Daytime metrics ---------------------------------------------
-    mse_day    = float(mean_squared_error(y_true_day, y_pred_day))
+    # ---- Daytime-only metrics (clear_sky_ghi > 0) -------------------
+    csg_te     = clearsky.reindex(pd.DatetimeIndex(t_te)).values
+    day_mask   = csg_te > 0
+    mse_day    = float(mean_squared_error(y_true_wm2[day_mask], y_pred_wm2[day_mask]))
     rmse_day   = float(np.sqrt(mse_day))
-    r2_day     = float(r2_score(y_true_day, y_pred_day))
+    r2_day     = float(r2_score(y_true_wm2[day_mask], y_pred_wm2[day_mask]))
     skill_day  = 1.0 - mse_day / MSE_BASELINE_R
 
     return {
-        "num_layers":  num_layers,
-        "hidden_size": hidden_size,
-        "n_params":    n_params,
-        "epochs_run":  epochs_run,
+        "num_layers":    num_layers,
+        "hidden_size":   hidden_size,
+        "n_params":      n_params,
+        "epochs_run":    epochs_run,
         "best_val_loss": best_val,
-        "RMSE_all":    rmse_all,
-        "RMSE_day":    rmse_day,
-        "R2_day":      r2_day,
-        "SkillScore":  skill_day,
+        "RMSE_all":      rmse_all,
+        "RMSE_day":      rmse_day,
+        "R2_day":        r2_day,
+        "SkillScore":    skill_day,
     }
 
 
 # ===========================================================================
-# HEATMAP HELPER
+# PLOT HELPERS
 # ===========================================================================
 
 def save_heatmap(
-    results: pd.DataFrame,
+    df: pd.DataFrame,
     metric: str,
     title: str,
     filename: str,
     cmap: str = "viridis_r",
     fmt: str = ".2f",
 ) -> None:
-    """
-    Pivot the results DataFrame and save a heatmap
-    (rows = num_layers, columns = hidden_size).
-    """
-    pivot = results.pivot(index="num_layers", columns="hidden_size", values=metric)
-    pivot = pivot.sort_index(ascending=True)
-    pivot = pivot.reindex(sorted(pivot.columns), axis=1)
+    """Save a heatmap (rows = num_layers, columns = hidden_size)."""
+    pivot = (
+        df.pivot(index="num_layers", columns="hidden_size", values=metric)
+        .sort_index()
+        .reindex(sorted(df["hidden_size"].unique()), axis=1)
+    )
 
-    fig, ax = plt.subplots(figsize=(9, 5))
+    fig, ax = plt.subplots(figsize=(7, 5))
     im = ax.imshow(pivot.values, aspect="auto", cmap=cmap)
     plt.colorbar(im, ax=ax, label=metric)
 
@@ -335,19 +347,49 @@ def save_heatmap(
     ax.set_ylabel("num_layers")
     ax.set_title(title)
 
-    # Annotate each cell with the metric value
     for r_idx, row in enumerate(pivot.index):
         for c_idx, col in enumerate(pivot.columns):
             val = pivot.loc[row, col]
             if pd.isna(val):
                 continue
             text_color = "white" if im.norm(val) < 0.5 else "black"
-            ax.text(
-                c_idx, r_idx, format(val, fmt),
-                ha="center", va="center",
-                fontsize=9, color=text_color,
-            )
+            ax.text(c_idx, r_idx, format(val, fmt),
+                    ha="center", va="center", fontsize=9, color=text_color)
 
+    fig.tight_layout()
+    fig.savefig(filename, dpi=200)
+    plt.close(fig)
+    print(f"  Saved: {Path(filename).name}")
+
+
+def save_lineplot_vs_hidden(df: pd.DataFrame, filename: str) -> None:
+    """Line plot: RMSE_day vs hidden_size, one line per num_layers."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for nl in sorted(df["num_layers"].unique()):
+        sub = df[df["num_layers"] == nl].sort_values("hidden_size")
+        ax.plot(sub["hidden_size"], sub["RMSE_day"], marker="o", label=f"layers={nl}")
+    ax.set_xlabel("hidden_size")
+    ax.set_ylabel("RMSE daytime [W/m²]")
+    ax.set_title("Daytime RMSE vs hidden_size  (lower is better)")
+    ax.legend(title="num_layers")
+    ax.grid(alpha=0.3)
+    fig.tight_layout()
+    fig.savefig(filename, dpi=200)
+    plt.close(fig)
+    print(f"  Saved: {Path(filename).name}")
+
+
+def save_lineplot_vs_layers(df: pd.DataFrame, filename: str) -> None:
+    """Line plot: RMSE_day vs num_layers, one line per hidden_size."""
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for hs in sorted(df["hidden_size"].unique()):
+        sub = df[df["hidden_size"] == hs].sort_values("num_layers")
+        ax.plot(sub["num_layers"], sub["RMSE_day"], marker="o", label=f"hidden={hs}")
+    ax.set_xlabel("num_layers")
+    ax.set_ylabel("RMSE daytime [W/m²]")
+    ax.set_title("Daytime RMSE vs num_layers  (lower is better)")
+    ax.legend(title="hidden_size")
+    ax.grid(alpha=0.3)
     fig.tight_layout()
     fig.savefig(filename, dpi=200)
     plt.close(fig)
@@ -361,12 +403,19 @@ def save_heatmap(
 def main() -> None:
     print("=" * 65)
     print("  BiLSTM Sensitivity Analysis — num_layers × hidden_size")
-    print(f"  Grid: {NUM_LAYERS_LIST} × {HIDDEN_SIZE_LIST}")
+    print(f"  Grid: {NUM_LAYERS_LIST} × {HIDDEN_SIZE_LIST}  ({len(NUM_LAYERS_LIST) * len(HIDDEN_SIZE_LIST)} combos)")
     print(f"  Epochs/combo: {SWEEP_EPOCHS}  |  Early-stop patience: {SWEEP_EARLY_STOP}")
     print(f"  Fixed — LR: {LR_INIT}  BATCH: {BATCH_SIZE}  DROPOUT: {DROPOUT}")
     print(f"          ACTIVATION: {ACTIVATION}  DAYMASK: {USE_DAYMASK}  DESCALER: {DESCALER_METHOD}")
-    print(f"  MSE_BASELINE_R (GFS): {MSE_BASELINE_R:.3f}")
+    print(f"  MSE_BASELINE_R (GFS daytime): {MSE_BASELINE_R:.3f}")
     print("=" * 65)
+
+    # ---- Resume: find already-completed combinations -----------------
+    done = load_existing_results()
+    if done:
+        print(f"\nResume mode — skipping {len(done)} already-completed combo(s):")
+        for nl, hs in sorted(done):
+            print(f"  layers={nl}  hidden={hs}")
 
     # ---- Load data once ----------------------------------------------
     npz_path = ROOT / SEQ_NPZ_FILE
@@ -383,11 +432,11 @@ def main() -> None:
     # ---- Grid search -------------------------------------------------
     combos   = list(product(NUM_LAYERS_LIST, HIDDEN_SIZE_LIST))
     n_combos = len(combos)
-    records  = []
+    pending  = [(nl, hs) for nl, hs in combos if (nl, hs) not in done]
 
-    print(f"\nStarting grid search — {n_combos} combinations\n")
+    print(f"\nStarting grid search — {len(pending)}/{n_combos} combinations to run\n")
 
-    for combo_idx, (nl, hs) in enumerate(combos, start=1):
+    for combo_idx, (nl, hs) in enumerate(pending, start=len(done) + 1):
         t0 = time.time()
         print(f"[{combo_idx:02d}/{n_combos}]  num_layers={nl}  hidden_size={hs}", end="  ", flush=True)
 
@@ -401,7 +450,7 @@ def main() -> None:
             )
             elapsed = time.time() - t0
             metrics["elapsed_s"] = round(elapsed, 1)
-            records.append(metrics)
+            append_result(metrics)
 
             print(
                 f"params={metrics['n_params']:,}  "
@@ -414,7 +463,7 @@ def main() -> None:
         except Exception as exc:
             elapsed = time.time() - t0
             print(f"FAILED ({elapsed:.0f}s): {exc}")
-            records.append({
+            append_result({
                 "num_layers": nl, "hidden_size": hs,
                 "n_params": None, "epochs_run": None,
                 "best_val_loss": None,
@@ -423,36 +472,33 @@ def main() -> None:
                 "elapsed_s": round(elapsed, 1),
             })
 
-    # ---- Save CSV ----------------------------------------------------
-    df = pd.DataFrame(records).sort_values(["num_layers", "hidden_size"]).reset_index(drop=True)
-    csv_path = OUT_DIR / "sensitivity_results.csv"
-    df.to_csv(csv_path, index=False, float_format="%.6f")
-    print(f"\nResults saved to:\n  {csv_path}")
+    # ---- Load full results (including previously saved rows) ---------
+    df = pd.read_csv(CSV_PATH).sort_values(["num_layers", "hidden_size"]).reset_index(drop=True)
+    df_valid = df.dropna(subset=["RMSE_day", "SkillScore"])
 
-    # ---- Print ranked summary ----------------------------------------
-    df_valid = df.dropna(subset=["SkillScore"])
-    best_row = df_valid.loc[df_valid["SkillScore"].idxmax()]
+    # ---- Print ranked results table (sorted by daytime RMSE) ---------
+    rank_cols = ["num_layers", "hidden_size", "n_params", "epochs_run",
+                 "RMSE_all", "RMSE_day", "R2_day", "SkillScore"]
+    ranked = df_valid.sort_values("RMSE_day")[rank_cols].reset_index(drop=True)
+    ranked.index += 1   # 1-based rank
 
-    print("\n" + "=" * 65)
-    print("  TOP 5 COMBINATIONS BY SKILL SCORE (daytime)")
-    print("=" * 65)
-    top5_cols = ["num_layers", "hidden_size", "n_params", "epochs_run",
-                 "RMSE_day", "R2_day", "SkillScore"]
+    print("\n" + "=" * 75)
+    print("  RESULTS RANKED BY DAYTIME RMSE (ascending — lower is better)")
+    print("=" * 75)
+    print(ranked.to_string(float_format=lambda x: f"{x:.4f}"))
+    print("=" * 75)
+
+    best = ranked.iloc[0]
     print(
-        df_valid.sort_values("SkillScore", ascending=False)
-        .head(5)[top5_cols]
-        .to_string(index=False, float_format=lambda x: f"{x:.4f}")
-    )
-    print("=" * 65)
-    print(
-        f"\n  Best: num_layers={int(best_row['num_layers'])}  "
-        f"hidden_size={int(best_row['hidden_size'])}  "
-        f"SkillScore={best_row['SkillScore']:.4f}  "
-        f"RMSE_day={best_row['RMSE_day']:.2f} W/m²"
+        f"\n  Best: num_layers={int(best['num_layers'])}  "
+        f"hidden_size={int(best['hidden_size'])}  "
+        f"RMSE_day={best['RMSE_day']:.2f} W/m²  "
+        f"SkillScore={best['SkillScore']:.4f}  "
+        f"R2={best['R2_day']:.4f}"
     )
 
-    # ---- Heatmaps ----------------------------------------------------
-    print("\nGenerating heatmaps…")
+    # ---- Plots -------------------------------------------------------
+    print("\nGenerating plots…")
 
     save_heatmap(
         df_valid, "RMSE_day",
@@ -466,17 +512,13 @@ def main() -> None:
         filename=str(OUT_DIR / "heatmap_skillscore.png"),
         cmap="RdYlGn", fmt=".3f",
     )
-    save_heatmap(
-        df_valid, "R2_day",
-        title="R² daytime  — higher is better",
-        filename=str(OUT_DIR / "heatmap_r2_day.png"),
-        cmap="RdYlGn", fmt=".3f",
+    save_lineplot_vs_hidden(
+        df_valid,
+        filename=str(OUT_DIR / "lineplot_rmse_vs_hidden.png"),
     )
-    save_heatmap(
-        df_valid, "RMSE_all",
-        title="RMSE all hours [W/m²]  — lower is better",
-        filename=str(OUT_DIR / "heatmap_rmse_all.png"),
-        cmap="YlOrRd", fmt=".1f",
+    save_lineplot_vs_layers(
+        df_valid,
+        filename=str(OUT_DIR / "lineplot_rmse_vs_layers.png"),
     )
 
     print(f"\nAll outputs in: {OUT_DIR}")
