@@ -175,8 +175,9 @@ SIATA_GHI_VAR  = VAR_SIATA_GHI   # Observed GHI variable name (SIATA cleaned)
 # --- Computed solar indices ----------------------------------------
 # Clear-sky index (gfs_csi): GHI_GFS / GHI_ClearSky  →  normalised 0-1
 CSI_INDEX_DIR  = f"{PREP_DATA_DIR}/_04_indices/clear_sky_indices"
-SIATA_CSI_FILE = f"{CSI_INDEX_DIR}/clearsky_index_Siata.nc"   # SIATA CSI (prediction target)
-SIATA_CSI_VAR  = VAR_SIATA_CSI
+SIATA_CSI_FILE  = f"{CSI_INDEX_DIR}/clearsky_index_Siata.nc"   # SIATA CSI (prediction target)
+SIATA_CSI_VAR   = VAR_SIATA_CSI
+SIATA_CLIM_FILE = f"{PREP_DATA_DIR}/siata_climatology.nc"       # Pre-computed SIATA climatology
 
 # Clearness index (gfs_kc): GHI_GFS / GHI_Extraterrestrial  →  normalised 0-1
 CLEARNESS_INDEX_DIR = f"{PREP_DATA_DIR}/_04_indices/clearness_indices"
@@ -225,7 +226,8 @@ LSTM_DIR = "_4_LSTM_modules"
 
 # --- Prepared sequence files (.npz) --------------------------------
 # Multi-feature sequences with all 4 launch times (main file)
-SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"  # sym18 + attention run
+SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"       # sym18 + attention run
+SEQ_NPZ_CLIM_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"  # + 10 climatology features
 # Test sequence file (no extension; np.save appends .npy)
 SEQ_NPZ_TEST_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
 
@@ -245,6 +247,8 @@ CSV_OUT = f"{LSTM_DIR}/Evaluation/Sym24_predictions_full.csv"
 TEST_INDICES_DIR             = f"{LSTM_DIR}/test_indices"
 # Indices for the main multi-feature symmetric experiment
 TEST_INDICES_FILE            = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_test"
+# Indices for the climatology-enriched sequences (sym18 + 10 clim features)
+TEST_INDICES_CLIM_FILE       = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_clim"
 # Indices for baseline comparison (GFS vs SIATA, 1 causal launch time)
 TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24_CSI_0100.npy"
 
@@ -253,7 +257,9 @@ TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24
 # BI-LSTM NETWORK HYPERPARAMETERS
 # ===================================================================
 
-N_FEAT     = 69     # Number of input features (4 LT × variables + meta)
+N_FEAT         = 69   # Number of input features (4 LT × variables + meta)
+N_CLIM_FEATURES = 10  # Climatological features injected per time step (see compute_siata_climatology.py)
+# Total features with climatology: N_FEAT + N_CLIM_FEATURES = 79
 HIDDEN     = 96     # Hidden state dimension of the LSTM
 NUM_LAYERS = 3      # Number of stacked LSTM layers
 DROPOUT    = 0.25   # Dropout rate between layers (regularisation)
