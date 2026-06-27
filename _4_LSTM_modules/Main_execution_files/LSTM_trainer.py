@@ -568,8 +568,19 @@ def main():
         Corr             = float(np.corrcoef(y_true_r.ravel(), y_pred_r.ravel())[0, 1]),
         Residual_Variance= residual_variance_r,
     )
-    # Skill Score: how much the model improves over the direct GFS forecast
-    metrics_r["SkillScore"] = 1.0 - metrics_r["MSE"] / MSE_BASELINE_R
+
+    # Daytime-only evaluation (clear_sky_ghi > 0).
+    # da_ref is already loaded and squeezed (observation_time dim) for descaling.
+    # MSE_BASELINE_R is the daytime-only GFS baseline, so both sides must be daytime-only.
+    csi_at_test  = da_ref.sel(observation_time=t_te).values
+    day_mask     = csi_at_test > 0
+    y_true_day   = y_true_r[day_mask]
+    y_pred_day   = y_pred_r[day_mask]
+    mse_day      = float(mean_squared_error(y_true_day, y_pred_day))
+    metrics_r["RMSE_daytime"] = float(np.sqrt(mse_day))
+    metrics_r["MAE_daytime"]  = float(mean_absolute_error(y_true_day, y_pred_day))
+    # SkillScore: daytime-only model MSE vs daytime-only GFS baseline
+    metrics_r["SkillScore"]   = 1.0 - mse_day / MSE_BASELINE_R
 
     print("\n=== Evaluation — real space (W/m²) ===")
     for k, v in metrics_r.items():
