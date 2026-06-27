@@ -49,6 +49,9 @@ from sklearn.metrics import (
 # Main architecture: bidirectional Bi-LSTM
 from _4_LSTM_modules.NN_modules.BiLSTMRegressor import BiLSTMRegressor
 
+# Asymmetric hour-weighted loss (optional — controlled by USE_ASYMMETRIC_LOSS)
+from _4_LSTM_modules.NN_modules.AsymmetricLoss import AsymmetricHourWeightedLoss
+
 # TensorBoard (optional — only if installed)
 try:
     from torch.utils.tensorboard import SummaryWriter
@@ -73,7 +76,7 @@ from config import (
 # RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
 # Descriptive name for the run (a timestamp is appended automatically)
-RUN_NAME = "4launch_Multfeat_sym18_clim79_BiLSTM_attn"
+RUN_NAME = "4launch_Multfeat_sym18_clim79_asymloss_BiLSTM_attn"
 
 # Path to the .npz file with the prepared sequences
 SEQ_NPZ = SEQ_NPZ_FILE
@@ -82,6 +85,16 @@ SEQ_NPZ = SEQ_NPZ_FILE
 # The method is controlled by DESCALER_METHOD in config.py
 DESCALER_FILE = CSI_GHI_FILE
 DESCALER_VAR  = CSI_VAR_NAME
+
+# -----------------------------------------------------------------------
+# ASYMMETRIC LOSS CONFIGURATION
+# -----------------------------------------------------------------------
+# Set USE_ASYMMETRIC_LOSS = True to replace standard MSE with
+# AsymmetricHourWeightedLoss — targets the zero-prediction failures
+# at hours 8-10 identified in the diagnostic analysis.
+USE_ASYMMETRIC_LOSS = True
+ALPHA        = 3.0                       # underestimation penalty multiplier
+HOUR_WEIGHTS = {8: 1.5, 9: 2.5, 10: 2.5}  # extra weight for transition hours
 
 # -----------------------------------------------------------------------
 # Create the run directory with a timestamp
@@ -162,6 +175,20 @@ def compute_day_mask(
     mask     = ((hours >= flag_end) & (hours <= flag_start)).astype(float)
     vals     = mask.values if hasattr(mask, "values") else mask
     return torch.tensor(vals, dtype=torch.float32)
+
+
+def compute_hours(
+    timestamps,
+    tz_offset: int = UTC_OFFSET,
+) -> torch.Tensor:
+    """
+    Returns the local hour of day (0-23) for each timestamp as a LongTensor.
+    Required by AsymmetricHourWeightedLoss to apply per-hour weights.
+    """
+    ts_local = pd.to_datetime(timestamps) + pd.Timedelta(hours=tz_offset)
+    hrs = ts_local.hour
+    vals = hrs.values if hasattr(hrs, "values") else hrs
+    return torch.tensor(vals, dtype=torch.long)
 
 
 # =======================================================================
@@ -401,12 +428,16 @@ def main():
     seq_len, n_feat = X_tr.shape[1], X_tr.shape[2]
 
     # -------------------------------------------------------------------
-    # 2) Pre-compute day/night masks (used when USE_DAYMASK=True)
+    # 2) Pre-compute day/night masks and local hours per sample
     # -------------------------------------------------------------------
     # Masks have one value per sample (1=day, 0=night)
     mask_train = compute_day_mask(t_tr)
     mask_val   = compute_day_mask(t_va)
     mask_test  = compute_day_mask(t_te)
+
+    # Local hour of day (0-23) — used by AsymmetricHourWeightedLoss
+    hours_train = compute_hours(t_tr)
+    hours_val   = compute_hours(t_va)
 
     # -------------------------------------------------------------------
     # 3) Build the Bi-LSTM model with hyperparameters from config.py
@@ -431,6 +462,17 @@ def main():
     # MSE loss without reduction (to allow weighting with the mask)
     loss_fn = nn.MSELoss(reduction="none")
 
+    # Asymmetric hour-weighted loss (replaces loss_fn when USE_ASYMMETRIC_LOSS=True)
+    if USE_ASYMMETRIC_LOSS:
+        asym_loss_fn = AsymmetricHourWeightedLoss(
+            alpha=ALPHA,
+            hour_weights=HOUR_WEIGHTS,
+            use_daymask=USE_DAYMASK,
+        )
+        print(f"Asymmetric loss: {asym_loss_fn}")
+    else:
+        asym_loss_fn = None
+
     # TensorBoard: logs the model graph if available
     if _TENSORBOARD:
         writer    = SummaryWriter(log_dir=RUN_DIR)
@@ -452,11 +494,16 @@ def main():
             preds = model(xb)              # (B,)
 
             if USE_DAYMASK:
-                # Apply mask: night predictions → 0
-                mask  = mask_train[idx]
-                preds = preds * mask
-                # Loss is not accumulated for night-time hours
-                loss  = (loss_fn(preds, yb) * mask).mean()
+                # Zero night predictions (inference consistency)
+                day_b = mask_train[idx]
+                preds = preds * day_b
+            else:
+                day_b = torch.ones(len(yb))
+
+            if USE_ASYMMETRIC_LOSS:
+                loss = asym_loss_fn(preds, yb, hours_train[idx], day_b)
+            elif USE_DAYMASK:
+                loss = (loss_fn(preds, yb) * day_b).mean()
             else:
                 loss = loss_fn(preds, yb).mean()
 
@@ -474,9 +521,15 @@ def main():
             for xb, yb, idx in va_dl:
                 preds = model(xb)
                 if USE_DAYMASK:
-                    mask  = mask_val[idx]
-                    preds = preds * mask
-                    loss  = (loss_fn(preds, yb) * mask).mean()
+                    day_b = mask_val[idx]
+                    preds = preds * day_b
+                else:
+                    day_b = torch.ones(len(yb))
+
+                if USE_ASYMMETRIC_LOSS:
+                    loss = asym_loss_fn(preds, yb, hours_val[idx], day_b)
+                elif USE_DAYMASK:
+                    loss = (loss_fn(preds, yb) * day_b).mean()
                 else:
                     loss = loss_fn(preds, yb).mean()
                 val_loss += loss.item() * len(xb)
@@ -607,9 +660,12 @@ def main():
         "Early Stop":  EARLY_STOP,
         "LR Factor":   LR_FACTOR,
         "LR Patience": LR_PATIENCE,
-        "Activation":  ACTIVATION,
-        "De-scaling":  DESCALER_METHOD,
-        "Night mask":  USE_DAYMASK,
+        "Activation":      ACTIVATION,
+        "De-scaling":      DESCALER_METHOD,
+        "Night mask":      USE_DAYMASK,
+        "Asymmetric loss": USE_ASYMMETRIC_LOSS,
+        "Alpha":           ALPHA           if USE_ASYMMETRIC_LOSS else "n/a",
+        "Hour weights":    HOUR_WEIGHTS    if USE_ASYMMETRIC_LOSS else "n/a",
     }
     make_summary(PATHS, metrics_n, metrics_r, hparams)
 
