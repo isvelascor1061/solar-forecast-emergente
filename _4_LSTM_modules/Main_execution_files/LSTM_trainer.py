@@ -67,7 +67,7 @@ from config import (
     CSI_GHI_FILE, CSI_VAR_NAME,
     LR_INIT, MIN_LR, EPOCHS, BATCH_SIZE, HIDDEN, NUM_LAYERS, DROPOUT,
     L2_LAMBDA, EARLY_STOP, LR_FACTOR, LR_PATIENCE,
-    ACTIVATION, DESCALER_METHOD, USE_DAYMASK,
+    ACTIVATION, DESCALER_METHOD, USE_DAYMASK, USE_DAYTIME_ONLY_LOSS,
     FLAG_START, FLAG_END, UTC_OFFSET,
     MSE_BASELINE_R,
 )
@@ -76,7 +76,7 @@ from config import (
 # RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
 # Descriptive name for the run (a timestamp is appended automatically)
-RUN_NAME = "4launch_Multfeat_sym18_clim79_asymloss_BiLSTM_attn"
+RUN_NAME = "4launch_Multfeat_sym18_clim79_dayonly_BiLSTM_attn"
 
 # Path to the .npz file with the prepared sequences
 SEQ_NPZ = SEQ_NPZ_FILE
@@ -92,7 +92,7 @@ DESCALER_VAR  = CSI_VAR_NAME
 # Set USE_ASYMMETRIC_LOSS = True to replace standard MSE with
 # AsymmetricHourWeightedLoss — targets the zero-prediction failures
 # at hours 8-10 identified in the diagnostic analysis.
-USE_ASYMMETRIC_LOSS = True
+USE_ASYMMETRIC_LOSS = False
 ALPHA        = 3.0                       # underestimation penalty multiplier
 HOUR_WEIGHTS = {8: 1.5, 9: 2.5, 10: 2.5}  # extra weight for transition hours
 
@@ -502,6 +502,13 @@ def main():
 
             if USE_ASYMMETRIC_LOSS:
                 loss = asym_loss_fn(preds, yb, hours_train[idx], day_b)
+            elif USE_DAYTIME_ONLY_LOSS:
+                # Exclude night samples from denominator — 100% gradient from daytime
+                day_idx = day_b > 0
+                if day_idx.any():
+                    loss = loss_fn(preds[day_idx], yb[day_idx]).mean()
+                else:
+                    loss = torch.tensor(0.0, requires_grad=True)
             elif USE_DAYMASK:
                 loss = (loss_fn(preds, yb) * day_b).mean()
             else:
@@ -528,6 +535,12 @@ def main():
 
                 if USE_ASYMMETRIC_LOSS:
                     loss = asym_loss_fn(preds, yb, hours_val[idx], day_b)
+                elif USE_DAYTIME_ONLY_LOSS:
+                    day_idx = day_b > 0
+                    if day_idx.any():
+                        loss = loss_fn(preds[day_idx], yb[day_idx]).mean()
+                    else:
+                        loss = torch.tensor(0.0)
                 elif USE_DAYMASK:
                     loss = (loss_fn(preds, yb) * day_b).mean()
                 else:
@@ -660,12 +673,13 @@ def main():
         "Early Stop":  EARLY_STOP,
         "LR Factor":   LR_FACTOR,
         "LR Patience": LR_PATIENCE,
-        "Activation":      ACTIVATION,
-        "De-scaling":      DESCALER_METHOD,
-        "Night mask":      USE_DAYMASK,
-        "Asymmetric loss": USE_ASYMMETRIC_LOSS,
-        "Alpha":           ALPHA           if USE_ASYMMETRIC_LOSS else "n/a",
-        "Hour weights":    HOUR_WEIGHTS    if USE_ASYMMETRIC_LOSS else "n/a",
+        "Activation":        ACTIVATION,
+        "De-scaling":        DESCALER_METHOD,
+        "Night mask":        USE_DAYMASK,
+        "Daytime-only loss": USE_DAYTIME_ONLY_LOSS,
+        "Asymmetric loss":   USE_ASYMMETRIC_LOSS,
+        "Alpha":             ALPHA        if USE_ASYMMETRIC_LOSS else "n/a",
+        "Hour weights":      HOUR_WEIGHTS if USE_ASYMMETRIC_LOSS else "n/a",
     }
     make_summary(PATHS, metrics_n, metrics_r, hparams)
 

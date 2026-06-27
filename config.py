@@ -296,6 +296,12 @@ DESCALER_METHOD = "physical"
 # False → the model learns all hours equally (including night-time)
 USE_DAYMASK = True
 
+# Compute training/validation loss on daytime samples only (clear_sky_ghi > 0).
+# When True: night samples are excluded from the loss denominator entirely,
+# so 100% of the gradient signal comes from hours that matter for solar production.
+# USE_DAYMASK must also be True (night predictions are still zeroed at inference time).
+USE_DAYTIME_ONLY_LOSS = True
+
 # MSE of the GFS reference model (computed with Comparison_before_NN.py)
 # Used to calculate the Skill Score: SS = 1 - MSE_model / MSE_GFS
 MSE_BASELINE_R = 40761.472609
