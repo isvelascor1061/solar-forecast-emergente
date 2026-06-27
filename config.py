@@ -226,8 +226,9 @@ LSTM_DIR = "_4_LSTM_modules"
 
 # --- Prepared sequence files (.npz) --------------------------------
 # Multi-feature sequences with all 4 launch times (main file)
-SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"       # sym18 + attention run
-SEQ_NPZ_CLIM_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"  # + 10 climatology features
+SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"  # active: sym18 + 10 clim features
+SEQ_NPZ_FILE_BASE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"       # baseline: sym18 without clim (69 feat)
+SEQ_NPZ_CLIM_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"  # alias kept for compatibility
 # Test sequence file (no extension; np.save appends .npy)
 SEQ_NPZ_TEST_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
 
@@ -257,9 +258,9 @@ TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24
 # BI-LSTM NETWORK HYPERPARAMETERS
 # ===================================================================
 
-N_FEAT         = 69   # Number of input features (4 LT × variables + meta)
+N_FEAT          = 79  # Total input features: 69 GFS/meta + 10 SIATA climatology (N_FEAT_BASE + N_CLIM_FEATURES)
+N_FEAT_BASE     = 69  # Original features before climatology injection (4 LT × 16 vars + step + zenith)
 N_CLIM_FEATURES = 10  # Climatological features injected per time step (see compute_siata_climatology.py)
-# Total features with climatology: N_FEAT + N_CLIM_FEATURES = 79
 HIDDEN     = 96     # Hidden state dimension of the LSTM
 NUM_LAYERS = 3      # Number of stacked LSTM layers
 DROPOUT    = 0.25   # Dropout rate between layers (regularisation)

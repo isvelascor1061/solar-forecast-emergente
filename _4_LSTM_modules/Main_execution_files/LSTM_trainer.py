@@ -73,7 +73,7 @@ from config import (
 # RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
 # Descriptive name for the run (a timestamp is appended automatically)
-RUN_NAME = "4launch_Multfeat_sym18_BiLSTM_attn"
+RUN_NAME = "4launch_Multfeat_sym18_clim79_BiLSTM_attn"
 
 # Path to the .npz file with the prepared sequences
 SEQ_NPZ = SEQ_NPZ_FILE
