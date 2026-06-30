@@ -85,7 +85,7 @@ from _4_LSTM_modules.NN_modules.BiLSTMRegressor import BiLSTMRegressor
 # SENSITIVITY GRID
 # ===========================================================================
 NUM_LAYERS_LIST  = [3, 5, 7, 8, 10]
-HIDDEN_SIZE_LIST = [64, 128, 256]
+HIDDEN_SIZE_LIST = [64, 128]
 
 # Training limits for the sensitivity sweep
 SWEEP_EPOCHS     = 35   # maximum epochs per combination
@@ -438,7 +438,8 @@ def main() -> None:
 
     for combo_idx, (nl, hs) in enumerate(pending, start=len(done) + 1):
         t0 = time.time()
-        print(f"[{combo_idx:02d}/{n_combos}]  num_layers={nl}  hidden_size={hs}", end="  ", flush=True)
+        run_label = f"sensitivity_clim79_{nl}l_{hs}h"
+        print(f"[{combo_idx:02d}/{n_combos}]  {run_label}", end="  ", flush=True)
 
         try:
             metrics = train_one_combo(
