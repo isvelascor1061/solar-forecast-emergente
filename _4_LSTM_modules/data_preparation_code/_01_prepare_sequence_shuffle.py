@@ -43,7 +43,9 @@ from config import (
     FEAT_LCDC_TEMPLATE, FEAT_HGT_TEMPLATE, FEAT_WIND10M_TEMPLATE, FEAT_SUNSD_TEMPLATE,
     SIATA_CSI_FILE, SIATA_CSI_VAR,
     SIATA_CLIM_FILE, N_CLIM_FEATURES,
+    TREND_FEATURES_FILE, N_TREND_FEATURES,
     SEQ_NPZ_CLIM_FILE, TEST_INDICES_CLIM_FILE,
+    SEQ_NPZ_TREND_FILE, TEST_INDICES_TREND_FILE,
     SEQ_MODE, K_LEFT, K_RIGHT, OFF, K, VAL_SPLIT, TEST_SPLIT, SHUFFLE_SEED,
     INCLUDE_STEP, INCLUDE_DAYFLAG, ADD_HOD, ADD_DOY, ADD_ZENITH,
     LAT, LON, FLAG_START, FLAG_END,
@@ -52,6 +54,10 @@ from config import (
 import xarray as xr
 
 # ============ USER CONFIG =============================
+# Set True to produce the 85-feature trend-enriched NPZ (clim + 6 trend features).
+# Set False to regenerate the 79-feature clim NPZ without any change to that file.
+INCLUDE_TREND_FEATURES = True
+
 launch_times = LAUNCH_TIMES
 
 feat_templates = [
@@ -89,9 +95,13 @@ add_hod    = ADD_HOD
 add_doy    = ADD_DOY
 add_zenith = ADD_ZENITH
 
-# Output files — climatology-enriched sequences (sym18 + 10 clim features)
-OUT_NPZ         = SEQ_NPZ_CLIM_FILE
-indice_filepath = TEST_INDICES_CLIM_FILE
+# Output files — switch based on INCLUDE_TREND_FEATURES flag
+if INCLUDE_TREND_FEATURES:
+    OUT_NPZ         = SEQ_NPZ_TREND_FILE        # clim_trend.npz  (85 features)
+    indice_filepath = TEST_INDICES_TREND_FILE
+else:
+    OUT_NPZ         = SEQ_NPZ_CLIM_FILE         # clim.npz  (79 features, unchanged)
+    indice_filepath = TEST_INDICES_CLIM_FILE
 
 # =======================================================
 
@@ -257,10 +267,38 @@ def main(indice_filepath: str):
     ]
     df[CLIM_FEAT_NAMES] = df[CLIM_FEAT_NAMES].fillna(0.0)
 
-    # Combine original + new feature names for the full feature matrix
-    all_feature_vars = loader.feature_vars + CLIM_FEAT_NAMES
+    # ---- 1c) Inject temporal trend features from trend_features.nc -----------
+    TREND_FEAT_NAMES = []   # populated below only when the flag is active
+
+    if INCLUDE_TREND_FEATURES:
+        ds_trend = xr.open_dataset(TREND_FEATURES_FILE, engine="h5netcdf")
+
+        # Variable names stored in the NetCDF (order must match N_TREND_FEATURES)
+        trend_var_names = [
+            "csi_trend_1h",
+            "csi_trend_3h",
+            "csi_trend_6h",
+            "csi_volatility_3h",
+            "csi_is_increasing",
+            "nocturnal_tcdc_mean",
+        ]
+        df_trend = ds_trend[trend_var_names].to_dataframe()[trend_var_names]
+        ds_trend.close()
+
+        # Left-join on the main DataFrame's DatetimeIndex (observation_time).
+        # Timestamps present in df but absent in trend_features.nc receive NaN,
+        # which are then filled with 0.0 (same convention as the clim features).
+        df = df.join(df_trend, how="left")
+        TREND_FEAT_NAMES = trend_var_names
+        df[TREND_FEAT_NAMES] = df[TREND_FEAT_NAMES].fillna(0.0)
+
+        print(f"Trend features added: {TREND_FEAT_NAMES}")
+
+    # Combine original + clim + (optional) trend feature names
+    all_feature_vars = loader.feature_vars + CLIM_FEAT_NAMES + TREND_FEAT_NAMES
     n_original = len(loader.feature_vars)   # 69
     print(f"Original features: {n_original}  |  Clim features: {N_CLIM_FEATURES}  "
+          f"|  Trend features: {len(TREND_FEAT_NAMES)}  "
           f"|  Total: {len(all_feature_vars)}")
 
     X_all = df[all_feature_vars].values.astype(np.float32)
@@ -318,7 +356,40 @@ def main(indice_filepath: str):
     print(f"Clim features normalised with training-set min-max "
           f"(cols {clim_start}–{clim_end - 1})")
 
-    # Verify: no NaN in the new features
+    # ---- 4c) Min-max normalise the 6 trend features (training set only) -----
+    trend_feat_min = np.array([], dtype=np.float32)
+    trend_feat_max = np.array([], dtype=np.float32)
+
+    if INCLUDE_TREND_FEATURES:
+        trend_start = clim_end                         # 79
+        trend_end   = trend_start + N_TREND_FEATURES   # 85
+
+        train_trend_flat = X_tr[:, :, trend_start:trend_end].reshape(-1, N_TREND_FEATURES)
+        trend_feat_min   = train_trend_flat.min(axis=0)   # shape (6,)
+        trend_feat_max   = train_trend_flat.max(axis=0)
+        trend_range      = trend_feat_max - trend_feat_min
+        trend_range[trend_range == 0] = 1.0               # avoid division by zero
+
+        for split in (X_tr, X_va, X_te):
+            raw = split[:, :, trend_start:trend_end]
+            split[:, :, trend_start:trend_end] = np.clip(
+                (raw - trend_feat_min) / trend_range, 0.0, 1.0
+            )
+
+        print(f"Trend features normalised with training-set min-max "
+              f"(cols {trend_start}–{trend_end - 1})")
+
+        # Verification
+        nan_trend = (
+            np.isnan(X_tr[:, :, trend_start:trend_end]).any()
+            or np.isnan(X_va[:, :, trend_start:trend_end]).any()
+            or np.isnan(X_te[:, :, trend_start:trend_end]).any()
+        )
+        print(f"NaN in trend features: {nan_trend}")
+        print(f"Feature check cols 79–84: {all_feature_vars[79:85]}")
+        assert X_tr.shape[2] == 85, f"Expected 85 features, got {X_tr.shape[2]}"
+
+    # Verify: no NaN in the clim features
     nan_clim = (
         np.isnan(X_tr[:, :, clim_start:clim_end]).any()
         or np.isnan(X_va[:, :, clim_start:clim_end]).any()
@@ -351,6 +422,8 @@ def main(indice_filepath: str):
         splits=np.array([VAL_SPLIT, TEST_SPLIT]),
         clim_feat_min=feat_min,
         clim_feat_max=feat_max,
+        trend_feat_min=trend_feat_min,    # shape (6,) or empty array if flag is False
+        trend_feat_max=trend_feat_max,
     )
     print(f"Saved sequences to {OUT_NPZ}")
 

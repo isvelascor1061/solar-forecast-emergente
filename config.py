@@ -177,7 +177,9 @@ SIATA_GHI_VAR  = VAR_SIATA_GHI   # Observed GHI variable name (SIATA cleaned)
 CSI_INDEX_DIR  = f"{PREP_DATA_DIR}/_04_indices/clear_sky_indices"
 SIATA_CSI_FILE  = f"{CSI_INDEX_DIR}/clearsky_index_Siata.nc"   # SIATA CSI (prediction target)
 SIATA_CSI_VAR   = VAR_SIATA_CSI
-SIATA_CLIM_FILE = f"{PREP_DATA_DIR}/siata_climatology.nc"       # Pre-computed SIATA climatology
+SIATA_CLIM_FILE     = f"{PREP_DATA_DIR}/siata_climatology.nc"       # Pre-computed SIATA climatology
+TREND_FEATURES_FILE = f"{PREP_DATA_DIR}/trend_features.nc"          # GFS trend + nocturnal TCDC features
+N_TREND_FEATURES    = 6   # csi_trend_1h/3h/6h, csi_volatility_3h, csi_is_increasing, nocturnal_tcdc_mean
 
 # Clearness index (gfs_kc): GHI_GFS / GHI_Extraterrestrial  →  normalised 0-1
 CLEARNESS_INDEX_DIR = f"{PREP_DATA_DIR}/_04_indices/clearness_indices"
@@ -226,11 +228,12 @@ LSTM_DIR = "_4_LSTM_modules"
 
 # --- Prepared sequence files (.npz) --------------------------------
 # Multi-feature sequences with all 4 launch times (main file)
-SEQ_NPZ_FILE      = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"  # active: sym18 + 10 clim features
-SEQ_NPZ_FILE_BASE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"       # baseline: sym18 without clim (69 feat)
-SEQ_NPZ_CLIM_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"  # alias kept for compatibility
+SEQ_NPZ_FILE       = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"        # active: sym18 + 10 clim features (79 feat)
+SEQ_NPZ_FILE_BASE  = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"              # baseline: sym18 without clim (69 feat)
+SEQ_NPZ_CLIM_FILE  = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"         # alias kept for compatibility
+SEQ_NPZ_TREND_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim_trend.npz"   # clim + 6 trend features (85 feat)
 # Test sequence file (no extension; np.save appends .npy)
-SEQ_NPZ_TEST_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
+SEQ_NPZ_TEST_FILE  = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
 
 # --- Training run directory ----------------------------------------
 RUNS_DIR = f"{LSTM_DIR}/_runs/4launch_multfeat_sym"
@@ -250,6 +253,8 @@ TEST_INDICES_DIR             = f"{LSTM_DIR}/test_indices"
 TEST_INDICES_FILE            = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_test"
 # Indices for the climatology-enriched sequences (sym18 + 10 clim features)
 TEST_INDICES_CLIM_FILE       = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_clim"
+# Indices for the trend-enriched sequences (sym18 + 10 clim + 6 trend = 85 features)
+TEST_INDICES_TREND_FILE      = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_clim_trend"
 # Indices for baseline comparison (GFS vs SIATA, 1 causal launch time)
 TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24_CSI_0100.npy"
 
