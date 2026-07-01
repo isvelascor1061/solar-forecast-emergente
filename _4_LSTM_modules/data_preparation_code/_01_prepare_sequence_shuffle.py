@@ -44,8 +44,10 @@ from config import (
     SIATA_CSI_FILE, SIATA_CSI_VAR,
     SIATA_CLIM_FILE, N_CLIM_FEATURES,
     TREND_FEATURES_FILE, N_TREND_FEATURES,
+    ERA5_CLIM_FEATURES_FILE, N_ERA5_CLIM_FEATURES,
     SEQ_NPZ_CLIM_FILE, TEST_INDICES_CLIM_FILE,
     SEQ_NPZ_TREND_FILE, TEST_INDICES_TREND_FILE,
+    SEQ_NPZ_ERA5_FILE, TEST_INDICES_ERA5,
     SEQ_MODE, K_LEFT, K_RIGHT, OFF, K, VAL_SPLIT, TEST_SPLIT, SHUFFLE_SEED,
     INCLUDE_STEP, INCLUDE_DAYFLAG, ADD_HOD, ADD_DOY, ADD_ZENITH,
     LAT, LON, FLAG_START, FLAG_END,
@@ -54,9 +56,16 @@ from config import (
 import xarray as xr
 
 # ============ USER CONFIG =============================
+# USE_ERA5_CLIM=True  : replace 10 SIATA clim features with 11 ERA5 clim features
+#                       → 69 GFS + 11 ERA5 clim = 80 features total
+#                       → saves to 4launch_multfeat_sym18_era5clim.npz
+# USE_ERA5_CLIM=False : use existing SIATA clim (10 features, 79 or 85 feat total)
+USE_ERA5_CLIM = True
+
+# Only active when USE_ERA5_CLIM=False.
 # Set True to produce the 85-feature trend-enriched NPZ (clim + 6 trend features).
 # Set False to regenerate the 79-feature clim NPZ without any change to that file.
-INCLUDE_TREND_FEATURES = True
+INCLUDE_TREND_FEATURES = False
 
 launch_times = LAUNCH_TIMES
 
@@ -95,13 +104,19 @@ add_hod    = ADD_HOD
 add_doy    = ADD_DOY
 add_zenith = ADD_ZENITH
 
-# Output files — switch based on INCLUDE_TREND_FEATURES flag
-if INCLUDE_TREND_FEATURES:
+# Output files — three-way switch based on USE_ERA5_CLIM / INCLUDE_TREND_FEATURES
+if USE_ERA5_CLIM:
+    OUT_NPZ         = SEQ_NPZ_ERA5_FILE         # era5clim.npz  (80 features)
+    indice_filepath = TEST_INDICES_ERA5
+    N_CLIM_ACTIVE   = N_ERA5_CLIM_FEATURES      # 11
+elif INCLUDE_TREND_FEATURES:
     OUT_NPZ         = SEQ_NPZ_TREND_FILE        # clim_trend.npz  (85 features)
     indice_filepath = TEST_INDICES_TREND_FILE
+    N_CLIM_ACTIVE   = N_CLIM_FEATURES           # 10
 else:
-    OUT_NPZ         = SEQ_NPZ_CLIM_FILE         # clim.npz  (79 features, unchanged)
+    OUT_NPZ         = SEQ_NPZ_CLIM_FILE         # clim.npz  (79 features)
     indice_filepath = TEST_INDICES_CLIM_FILE
+    N_CLIM_ACTIVE   = N_CLIM_FEATURES           # 10
 
 # =======================================================
 
@@ -221,51 +236,68 @@ def main(indice_filepath: str):
     df = loader.to_dataframe(dropna=True)
     print(loader.feature_vars)
 
-    # ---- 1b) Inject climatological features from siata_climatology.nc ----
-    # Load the pre-computed climatology (produced by compute_siata_climatology.py)
-    ds_clim = xr.open_dataset(SIATA_CLIM_FILE, engine="h5netcdf")
+    # ---- 1b) Inject climatological features ----------------------------------
+    # Branches on USE_ERA5_CLIM:
+    #   True  → 11 ERA5 30-year clim features  (era5_clim_features.nc)
+    #   False → 10 SIATA clim features          (siata_climatology.nc)
 
-    # Extract numpy arrays for fast vectorised lookup:
-    #   month_hour stats shape: (12, 24) — index by [month-1, hour]
-    #   hour_only   stats shape: (24,)   — index by [hour]
-    clim_mean_csi      = ds_clim["mean_csi"].values.astype(np.float32)      # (12, 24)
-    clim_std_csi       = ds_clim["std_csi"].values.astype(np.float32)       # (12, 24)
-    clim_prob_cloudy   = ds_clim["prob_cloudy"].values.astype(np.float32)   # (12, 24)
-    clim_prob_clear    = ds_clim["prob_clear"].values.astype(np.float32)    # (12, 24)
-    clim_prob_partial  = ds_clim["prob_partial"].values.astype(np.float32)  # (12, 24)
-    clim_bimodality    = ds_clim["bimodality"].values.astype(np.float32)    # (12, 24)
-    clim_std_hour      = ds_clim["std_by_hour"].values.astype(np.float32)   # (24,)
-    clim_trans_risk    = ds_clim["transition_risk"].values.astype(np.float32)  # (24,)
+    m_idx = df.index.month - 1   # 0-indexed month (0-11)
+    h_idx = df.index.hour        # hour 0-23
 
-    # Vectorised lookup using the DataFrame's DatetimeIndex
-    m_idx = df.index.month - 1   # 0-indexed (0–11)
-    h_idx = df.index.hour        # 0-indexed (0–23)
+    if USE_ERA5_CLIM:
+        # ---- ERA5 climatology (11 features) --------------------------------
+        ds_clim = xr.open_dataset(ERA5_CLIM_FEATURES_FILE, engine="h5netcdf")
 
-    # (month, hour) lookups — NaN for night hours (stats computed daytime only)
-    df["clim_mean_csi"]      = clim_mean_csi[m_idx, h_idx]
-    df["clim_std_csi"]       = clim_std_csi[m_idx, h_idx]
-    df["clim_prob_cloudy"]   = clim_prob_cloudy[m_idx, h_idx]
-    df["clim_prob_clear"]    = clim_prob_clear[m_idx, h_idx]
-    df["clim_prob_partial"]  = clim_prob_partial[m_idx, h_idx]
-    df["clim_bimodality"]    = clim_bimodality[m_idx, h_idx]
+        era5_vars = [
+            "era5_mean_kt", "era5_std_kt", "era5_prob_cloudy", "era5_prob_clear",
+            "era5_prob_partial", "era5_bimodality", "era5_mean_tcc",
+            "era5_t2m_night", "era5_rh_night", "era5_month_sin", "era5_month_cos",
+        ]
+        for vname in era5_vars:
+            arr = ds_clim[vname].values.astype(np.float32)   # (12, 24)
+            df[vname] = arr[m_idx, h_idx]
+        ds_clim.close()
 
-    # (hour) lookups
-    df["clim_std_hour"]         = clim_std_hour[h_idx]
-    df["clim_transition_risk"]  = clim_trans_risk[h_idx]
+        # Fill inapplicable hours with 0.0 (NaN at night for kt-based features;
+        # NaN at daytime for t2m_night / rh_night)
+        CLIM_FEAT_NAMES = era5_vars
+        df[CLIM_FEAT_NAMES] = df[CLIM_FEAT_NAMES].fillna(0.0)
 
-    # Cyclic month encodings (always defined, no NaN)
-    month_vals = df.index.month
-    df["clim_month_sin"] = np.sin(2 * np.pi * month_vals / 12).astype(np.float32)
-    df["clim_month_cos"] = np.cos(2 * np.pi * month_vals / 12).astype(np.float32)
+        print(f"ERA5 clim features injected ({N_ERA5_CLIM_FEATURES}): {CLIM_FEAT_NAMES}")
 
-    # Fill nighttime NaN values with 0.0 — the model already has the zenith
-    # angle to distinguish day from night; 0 means "no climatological signal"
-    CLIM_FEAT_NAMES = [
-        "clim_mean_csi", "clim_std_csi", "clim_prob_cloudy", "clim_prob_clear",
-        "clim_prob_partial", "clim_bimodality", "clim_std_hour",
-        "clim_transition_risk", "clim_month_sin", "clim_month_cos",
-    ]
-    df[CLIM_FEAT_NAMES] = df[CLIM_FEAT_NAMES].fillna(0.0)
+    else:
+        # ---- SIATA climatology (10 features) --------------------------------
+        ds_clim = xr.open_dataset(SIATA_CLIM_FILE, engine="h5netcdf")
+
+        clim_mean_csi      = ds_clim["mean_csi"].values.astype(np.float32)         # (12, 24)
+        clim_std_csi       = ds_clim["std_csi"].values.astype(np.float32)
+        clim_prob_cloudy   = ds_clim["prob_cloudy"].values.astype(np.float32)
+        clim_prob_clear    = ds_clim["prob_clear"].values.astype(np.float32)
+        clim_prob_partial  = ds_clim["prob_partial"].values.astype(np.float32)
+        clim_bimodality    = ds_clim["bimodality"].values.astype(np.float32)
+        clim_std_hour      = ds_clim["std_by_hour"].values.astype(np.float32)      # (24,)
+        clim_trans_risk    = ds_clim["transition_risk"].values.astype(np.float32)  # (24,)
+        ds_clim.close()
+
+        df["clim_mean_csi"]      = clim_mean_csi[m_idx, h_idx]
+        df["clim_std_csi"]       = clim_std_csi[m_idx, h_idx]
+        df["clim_prob_cloudy"]   = clim_prob_cloudy[m_idx, h_idx]
+        df["clim_prob_clear"]    = clim_prob_clear[m_idx, h_idx]
+        df["clim_prob_partial"]  = clim_prob_partial[m_idx, h_idx]
+        df["clim_bimodality"]    = clim_bimodality[m_idx, h_idx]
+        df["clim_std_hour"]      = clim_std_hour[h_idx]
+        df["clim_transition_risk"] = clim_trans_risk[h_idx]
+
+        month_vals = df.index.month
+        df["clim_month_sin"] = np.sin(2 * np.pi * month_vals / 12).astype(np.float32)
+        df["clim_month_cos"] = np.cos(2 * np.pi * month_vals / 12).astype(np.float32)
+
+        CLIM_FEAT_NAMES = [
+            "clim_mean_csi", "clim_std_csi", "clim_prob_cloudy", "clim_prob_clear",
+            "clim_prob_partial", "clim_bimodality", "clim_std_hour",
+            "clim_transition_risk", "clim_month_sin", "clim_month_cos",
+        ]
+        df[CLIM_FEAT_NAMES] = df[CLIM_FEAT_NAMES].fillna(0.0)
 
     # ---- 1c) Inject temporal trend features from trend_features.nc -----------
     TREND_FEAT_NAMES = []   # populated below only when the flag is active
@@ -297,7 +329,7 @@ def main(indice_filepath: str):
     # Combine original + clim + (optional) trend feature names
     all_feature_vars = loader.feature_vars + CLIM_FEAT_NAMES + TREND_FEAT_NAMES
     n_original = len(loader.feature_vars)   # 69
-    print(f"Original features: {n_original}  |  Clim features: {N_CLIM_FEATURES}  "
+    print(f"Original features: {n_original}  |  Clim features: {N_CLIM_ACTIVE}  "
           f"|  Trend features: {len(TREND_FEAT_NAMES)}  "
           f"|  Total: {len(all_feature_vars)}")
 
@@ -333,16 +365,17 @@ def main(indice_filepath: str):
     X_tr, y_tr, t_tr = X_seq[idx_tr], y_seq[idx_tr], times[idx_tr]
     X_va, y_va, t_va = X_seq[idx_va], y_seq[idx_va], times[idx_va]
     X_te, y_te, t_te = X_seq[idx_te], y_seq[idx_te], times[idx_te]
-    print(f"Split -> train={len(idx_tr)}, val={len(idx_va)}, test={len(idx_te)}")
+    print(f"Split: train={len(idx_tr)}, val={len(idx_va)}, test={len(idx_te)}")
 
-    # ---- 4b) Min-max normalise the 10 climatological features -----------
+    # ---- 4b) Min-max normalise the climatological features ---------------
     # Scaler is fitted on training data ONLY, then applied to val and test.
-    clim_start = n_original          # first clim channel index (= 69)
-    clim_end   = clim_start + N_CLIM_FEATURES   # last + 1  (= 79)
+    # N_CLIM_ACTIVE = 11 (ERA5) or 10 (SIATA), set in the USER CONFIG switch.
+    clim_start = n_original             # first clim channel index (= 69)
+    clim_end   = clim_start + N_CLIM_ACTIVE   # last + 1  (= 80 ERA5, 79 SIATA)
 
-    # Flatten (n_sequences, L, 10) → (n_sequences * L, 10) for fitting
-    train_clim_flat = X_tr[:, :, clim_start:clim_end].reshape(-1, N_CLIM_FEATURES)
-    feat_min   = train_clim_flat.min(axis=0)   # shape (10,)
+    # Flatten (n_sequences, L, N_CLIM_ACTIVE) for fitting
+    train_clim_flat = X_tr[:, :, clim_start:clim_end].reshape(-1, N_CLIM_ACTIVE)
+    feat_min   = train_clim_flat.min(axis=0)   # shape (N_CLIM_ACTIVE,)
     feat_max   = train_clim_flat.max(axis=0)
     feat_range = feat_max - feat_min
     feat_range[feat_range == 0] = 1.0          # avoid division by zero for constant features
@@ -354,7 +387,7 @@ def main(indice_filepath: str):
         )
 
     print(f"Clim features normalised with training-set min-max "
-          f"(cols {clim_start}–{clim_end - 1})")
+          f"(cols {clim_start}-{clim_end - 1})")
 
     # ---- 4c) Min-max normalise the 6 trend features (training set only) -----
     trend_feat_min = np.array([], dtype=np.float32)
@@ -385,9 +418,11 @@ def main(indice_filepath: str):
             or np.isnan(X_va[:, :, trend_start:trend_end]).any()
             or np.isnan(X_te[:, :, trend_start:trend_end]).any()
         )
+        expected_total = n_original + N_CLIM_ACTIVE + N_TREND_FEATURES
         print(f"NaN in trend features: {nan_trend}")
-        print(f"Feature check cols 79–84: {all_feature_vars[79:85]}")
-        assert X_tr.shape[2] == 85, f"Expected 85 features, got {X_tr.shape[2]}"
+        print(f"Feature check cols {trend_start}-{trend_end-1}: {all_feature_vars[trend_start:trend_end]}")
+        assert X_tr.shape[2] == expected_total, \
+            f"Expected {expected_total} features, got {X_tr.shape[2]}"
 
     # Verify: no NaN in the clim features
     nan_clim = (

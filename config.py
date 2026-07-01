@@ -180,6 +180,8 @@ SIATA_CSI_VAR   = VAR_SIATA_CSI
 SIATA_CLIM_FILE     = f"{PREP_DATA_DIR}/siata_climatology.nc"       # Pre-computed SIATA climatology
 TREND_FEATURES_FILE = f"{PREP_DATA_DIR}/trend_features.nc"          # GFS trend + nocturnal TCDC features
 N_TREND_FEATURES    = 6   # csi_trend_1h/3h/6h, csi_volatility_3h, csi_is_increasing, nocturnal_tcdc_mean
+ERA5_CLIM_FEATURES_FILE = f"{PREP_DATA_DIR}/era5_clim_features.nc"  # ERA5 30-year climatological features
+N_ERA5_CLIM_FEATURES    = 11  # mean_kt, std_kt, prob_cloudy, prob_clear, prob_partial, bimodality, mean_tcc, t2m_night, rh_night, month_sin, month_cos
 
 # Clearness index (gfs_kc): GHI_GFS / GHI_Extraterrestrial  →  normalised 0-1
 CLEARNESS_INDEX_DIR = f"{PREP_DATA_DIR}/_04_indices/clearness_indices"
@@ -233,6 +235,7 @@ SEQ_NPZ_FILE_BASE  = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18.npz"     
 SEQ_NPZ_CLIM_FILE  = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim.npz"         # alias kept for compatibility
 SEQ_NPZ_TREND_FILE = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_clim_trend.npz"   # clim + 6 trend features (85 feat)
 SEQ_NPZ_CAUSAL_FILE = f"{LSTM_DIR}/Prepared_data/1launch_causal_lt0100_clim.npz"       # causal 0100 LT only (28 feat)
+SEQ_NPZ_ERA5_FILE   = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_sym18_era5clim.npz"  # sym18 + 11 ERA5 clim features (80 feat)
 # Test sequence file (no extension; np.save appends .npy)
 SEQ_NPZ_TEST_FILE  = f"{LSTM_DIR}/Prepared_data/4launch_multfeat_test"
 
@@ -258,6 +261,8 @@ TEST_INDICES_CLIM_FILE       = f"{TEST_INDICES_DIR}/test_indices_4launch_multfea
 TEST_INDICES_TREND_FILE      = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_clim_trend"
 # Indices for the causal single-launch-time experiment (0100 LT, 28 features)
 TEST_INDICES_CAUSAL      = f"{TEST_INDICES_DIR}/test_indices_1launch_causal_lt0100_clim"
+# Indices for the ERA5 clim experiment (sym18 + 11 ERA5 clim features, 80 feat)
+TEST_INDICES_ERA5        = f"{TEST_INDICES_DIR}/test_indices_4launch_multfeat_sym18_era5clim"
 # Indices for baseline comparison (GFS vs SIATA, 1 causal launch time)
 TEST_INDICES_COMPARISON_FILE = f"{TEST_INDICES_DIR}/test_indices_multfeat_caus24_CSI_0100.npy"
 
