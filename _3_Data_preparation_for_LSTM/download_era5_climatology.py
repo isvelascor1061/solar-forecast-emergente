@@ -217,25 +217,31 @@ def merge_years() -> xr.Dataset:
 
 # ── Section 3 — Deaccumulate ssrd ─────────────────────────────────────────────
 
-def deaccumulate_ssrd(da_ssrd: xr.DataArray) -> xr.DataArray:
+def deaccumulate_ssrd(da_ssrd: xr.DataArray, dim: str = "time") -> xr.DataArray:
     """
-    ERA5 ssrd is cumulative from 00:00 UTC each calendar day.
+    Convert ERA5 ssrd (J/m^2) to average flux (W/m^2) for each hour.
 
-    Deaccumulation:
-        hourly_J = ssrd(t) - ssrd(t-1)     [backward diff; result labelled at t]
-        clip(min=0)                          [midnight reset gives large negative → 0]
-        divide by 3600                       [J/m² → W/m²]
+    ERA5 CDS hourly ssrd is stored as the energy accumulated during THAT
+    specific 1-hour window (not a running total from midnight).  Each value
+    is therefore already a 1-hour accumulation, so the only step required
+    is to divide by 3600 s to obtain average flux in W/m^2.
 
-    The resulting time coordinate is shifted by one step (starts at index 1),
-    so the first timestamp of the output corresponds to the second input timestamp.
+    Evidence: the raw values form a solar bell curve — they peak at local
+    noon and decrease toward sunset — which is only possible for per-hour
+    accumulatins, not a running daily cumulative.  A running cumulative
+    would be strictly non-decreasing through the day.
+
+    A small clip(min=0) is kept to guard against rounding artefacts in
+    the raw NetCDF data.
+
+    Parameters
+    ----------
+    da_ssrd : ssrd DataArray from the merged ERA5 Dataset
+    dim     : name of the time dimension (e.g. "time" or "valid_time")
     """
-    # xr.diff with label='upper' (default): result[t] = ssrd[t] - ssrd[t-1]
-    # Output length = n_time - 1; coordinate = time[1:]
-    hourly_j = da_ssrd.diff(dim="time")
-    hourly_j = hourly_j.clip(min=0)
-    ghi_wm2  = hourly_j / 3600.0
-    ghi_wm2.attrs["units"]       = "W m**-2"
-    ghi_wm2.attrs["long_name"]   = "Surface solar radiation downwards (hourly, deaccumulated)"
+    ghi_wm2 = da_ssrd.clip(min=0) / 3600.0
+    ghi_wm2.attrs["units"]     = "W m**-2"
+    ghi_wm2.attrs["long_name"] = "Surface solar radiation downwards (hourly mean flux)"
     return ghi_wm2
 
 
@@ -321,14 +327,22 @@ def compute_climatology(ds: xr.Dataset) -> dict:
 
     # ── 3. Deaccumulate ssrd → W/m²  (must be done in UTC before time-shift) ─
     print("Deaccumulating ssrd ...", flush=True)
-    ghi_wm2  = deaccumulate_ssrd(ds["ssrd"])
-    time_utc = pd.DatetimeIndex(ghi_wm2["time"].values)
 
-    # Align tcc, t2m, d2m to the shorter time axis (same as ghi_wm2 after diff)
-    tcc = ds["tcc"].sel(time=ghi_wm2["time"]).values.astype(np.float64)
-    t2m = ds["t2m"].sel(time=ghi_wm2["time"]).values.astype(np.float64)
-    d2m = ds["d2m"].sel(time=ghi_wm2["time"]).values.astype(np.float64)
-    ghi = ghi_wm2.values.astype(np.float64)
+    # ERA5 files sometimes use "valid_time" instead of "time" after merging.
+    # Detect the actual dimension name before any operation.
+    time_dim = ds["ssrd"].dims[0]
+    print(f"  Time dimension : '{time_dim}'")
+    print(f"  Dataset dims   : {dict(ds.dims)}")
+    print(f"  Dataset coords : {list(ds.coords)}")
+
+    ghi_wm2  = deaccumulate_ssrd(ds["ssrd"], dim=time_dim)
+    time_utc = pd.DatetimeIndex(ghi_wm2.coords[time_dim].values)
+
+    # ghi_wm2 now has the same length as the original dataset (no diff-induced N-1 loss)
+    tcc = ds["tcc"].values.ravel().astype(np.float64)
+    t2m = ds["t2m"].values.ravel().astype(np.float64)
+    d2m = ds["d2m"].values.ravel().astype(np.float64)
+    ghi = ghi_wm2.values.ravel().astype(np.float64)
 
     # ── 4. UTC → local time (Colombia UTC-5) ─────────────────────────────────
     # UTC_OFFSET is -5; shift converts UTC timestamps to local observation time
@@ -436,7 +450,7 @@ def save_climatology(clim: dict) -> None:
 
 def print_summary(clim: dict) -> None:
     """Print min / mean / max for each output variable."""
-    print("\n── ERA5 climatology summary ──────────────────────────────────────")
+    print("\n-- ERA5 climatology summary ---------------------------------------")
     print(f"  {'Variable':<22}  {'Valid cells':>11}  {'Min':>8}  {'Mean':>8}  {'Max':>8}")
     print("  " + "-" * 65)
     for name, arr in clim.items():
@@ -465,10 +479,17 @@ def main() -> None:
     ds_merged = merge_years()
 
     # Steps 3-7 — deaccumulate, shift to local time, compute RH, kt, aggregate
-    clim = compute_climatology(ds_merged)
-
-    # Step 8 — save climatology NetCDF
-    save_climatology(clim)
+    # Resume check: skip if the climatology output already exists
+    if os.path.exists(CLIM_FILE):
+        print(f"\nClimatology already exists — skipping compute.")
+        print(f"  {CLIM_FILE}")
+        ds_clim = xr.open_dataset(CLIM_FILE, engine="h5netcdf")
+        clim = {v: ds_clim[v].values for v in ds_clim.data_vars}
+        ds_clim.close()
+    else:
+        clim = compute_climatology(ds_merged)
+        # Step 8 — save climatology NetCDF
+        save_climatology(clim)
 
     # Summary
     print_summary(clim)
