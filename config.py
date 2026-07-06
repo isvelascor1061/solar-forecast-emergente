@@ -286,7 +286,7 @@ BATCH_SIZE = 128    # Batch size for inference and training
 
 LR_INIT     = 1e-3   # Initial learning rate (AdamW)
 MIN_LR      = 1e-6   # Minimum learning rate allowed by the scheduler
-EPOCHS      = 50     # Maximum number of training epochs
+EPOCHS      = 75     # Maximum number of training epochs
 L2_LAMBDA   = 10e-4  # L2 regularisation (weight decay in AdamW)
 EARLY_STOP  = 25     # Early stopping patience (epochs without improvement)
 LR_FACTOR   = 0.5    # LR reduction factor in the ReduceLROnPlateau scheduler

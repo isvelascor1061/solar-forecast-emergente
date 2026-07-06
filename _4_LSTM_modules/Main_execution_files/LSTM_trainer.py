@@ -76,7 +76,7 @@ from config import (
 # RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
 # Descriptive name for the run (a timestamp is appended automatically)
-RUN_NAME = "4launch_Multfeat_sym18_clim79_FIXED_BiLSTM_attn"
+RUN_NAME = "4launch_Multfeat_sym18_clim79_FIXED_ep75_BiLSTM_attn"
 
 # Path to the .npz file with the prepared sequences
 # Using SEQ_NPZ_CLIM_FILE (79 features: 69 GFS + 10 SIATA clim) — the fixed run
