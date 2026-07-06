@@ -76,10 +76,12 @@ from config import (
 # RUN CONFIGURATION — the only block the user needs to edit
 # -----------------------------------------------------------------------
 # Descriptive name for the run (a timestamp is appended automatically)
-RUN_NAME = "4launch_Multfeat_sym18_clim_trend85_BiLSTM_attn"
+RUN_NAME = "4launch_Multfeat_sym18_clim79_FIXED_BiLSTM_attn"
 
 # Path to the .npz file with the prepared sequences
-SEQ_NPZ = SEQ_NPZ_FILE
+# Using SEQ_NPZ_CLIM_FILE (79 features: 69 GFS + 10 SIATA clim) — the fixed run
+from config import SEQ_NPZ_CLIM_FILE
+SEQ_NPZ = SEQ_NPZ_CLIM_FILE
 
 # De-scaling specification: (NetCDF path, variable)
 # The method is controlled by DESCALER_METHOD in config.py
@@ -165,12 +167,16 @@ def compute_day_mask(
 
     Parameters
     ----------
-    timestamps  : array of timestamps (UTC) corresponding to the target.
+    timestamps  : array of timestamps — already in local Colombian time (UTC-5).
     flag_start  : local hour at which night begins (after this hour = night).
     flag_end    : local hour at which night ends (before this hour = night).
-    tz_offset   : UTC → local time offset (hours).
+    tz_offset   : unused — kept for API compatibility. Timestamps in the NPZ are
+                  stored in local time, so no offset must be applied here.
+                  Applying UTC_OFFSET=-5 again would double-shift hours 6-10 into
+                  apparent night, zeroing 1090 samples (20.4% of test) that have
+                  CSI_GHI up to 840 W/m².
     """
-    ts_local = pd.to_datetime(timestamps) + pd.Timedelta(hours=tz_offset)
+    ts_local = pd.to_datetime(timestamps)   # already local Colombian time — no offset
     hours    = ts_local.hour
     mask     = ((hours >= flag_end) & (hours <= flag_start)).astype(float)
     vals     = mask.values if hasattr(mask, "values") else mask
@@ -184,8 +190,9 @@ def compute_hours(
     """
     Returns the local hour of day (0-23) for each timestamp as a LongTensor.
     Required by AsymmetricHourWeightedLoss to apply per-hour weights.
+    Timestamps are already in local Colombian time — no offset applied.
     """
-    ts_local = pd.to_datetime(timestamps) + pd.Timedelta(hours=tz_offset)
+    ts_local = pd.to_datetime(timestamps)   # already local Colombian time — no offset
     hrs = ts_local.hour
     vals = hrs.values if hasattr(hrs, "values") else hrs
     return torch.tensor(vals, dtype=torch.long)
