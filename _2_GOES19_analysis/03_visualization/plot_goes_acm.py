@@ -78,9 +78,14 @@ ACM_NORM   = mcolors.BoundaryNorm([-0.5, 0.5, 1.5, 2.5, 3.5], ACM_CMAP.N)
 # ---------------------------------------------------------------------------
 
 def local_to_utc(date_str: str, hour: int, minute: int) -> datetime:
-    """Convert a Colombia local time (UTC-5) to UTC datetime."""
-    year, month, day = map(int, date_str.split("-"))
-    local_dt = datetime(year, month, day, hour, minute, tzinfo=timezone.utc)
+    """Convert a Colombia local time (UTC-5) to UTC datetime.
+
+    date_str is the panel-specific date (may differ from the start date
+    when the sequence crosses midnight).
+    """
+    local_dt = datetime.strptime(
+        f"{date_str} {hour:02d}:{minute:02d}", "%Y-%m-%d %H:%M"
+    )
     return local_dt + timedelta(hours=UTC_OFFSET)
 
 
@@ -312,8 +317,9 @@ def plot_sequence(slug: str, label: str, local_times: list,
     ----------
     slug        : filename slug, e.g. "09-00"
     label       : figure title label
-    local_times : list of 9 (hour, minute) tuples in Colombia local time
-    date_str    : 'YYYY-MM-DD'
+    local_times : list of 9 (date_str, hour, minute) tuples in Colombia local time;
+                  date_str per panel may differ from the start date on midnight rollover
+    date_str    : 'YYYY-MM-DD' of the start time (used for the figure title/filename)
     save        : whether to write the figure to disk
     """
     proj = ccrs.PlateCarree()
@@ -338,9 +344,9 @@ def plot_sequence(slug: str, label: str, local_times: list,
 
     pcm_ref = None
 
-    for idx, (hour, minute) in enumerate(local_times):
+    for idx, (panel_date, hour, minute) in enumerate(local_times):
         ax = axes.flat[idx]
-        utc_dt     = local_to_utc(date_str, hour, minute)
+        utc_dt     = local_to_utc(panel_date, hour, minute)
         time_label = format_local_time(hour, minute)
 
         print(f"\n  Panel {idx+1}/9 - {time_label} local ({utc_dt.strftime('%H:%M')} UTC):")
@@ -433,11 +439,11 @@ if __name__ == "__main__":
                         help="Save the output image")
     args = parser.parse_args()
 
-    start_hour, start_min = map(int, args.start.split(":"))
+    base = datetime.strptime(f"{args.date} {args.start}", "%Y-%m-%d %H:%M")
     local_times = []
     for i in range(9):
-        total_min = start_hour * 60 + start_min + i * 10
-        local_times.append((total_min // 60, total_min % 60))
+        t = base + timedelta(minutes=i * 10)
+        local_times.append((t.date().isoformat(), t.hour, t.minute))
 
     slug  = args.start.replace(":", "-")
     label = f"{args.date} from {args.start} (local Colombia)"
