@@ -22,6 +22,15 @@ import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 from goes2go import GOES
 
+# -- RESOLUTION NOTE ----------------------------------------------------------
+# COD Full Disk: was 4 km/pixel before March 22, 2023
+#                changed to 2 km/pixel on March 22, 2023
+# ACM Full Disk: always 2 km/pixel (no change)
+# BCM Full Disk: always 2 km/pixel (no change)
+# For training data 2021-2024, COD needs resampling
+# to a common 2km resolution for the pre-March 2023 period.
+# -----------------------------------------------------------------------------
+
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
