@@ -1,18 +1,29 @@
 """
 Visualize GOES-16 Cloud Optical Depth (COD) over the Valle de Aburrá.
 
-Three 3×3 panel figures covering:
-  - Early morning (madrugada): 02:00–03:20 local
-  - Dawn transition (amanecer): 05:50–07:10 local
-  - Midday (mediodia): 12:00–13:20 local
+Generates a single 3x3 figure with 9 panels, one per 10-minute step
+starting from a user-supplied local Colombia time.
 
-Date: 2023-10-15 | Satellite: GOES-16 | Product: ABI-L2-CODF
+Usage:
+    python plot_goes_cod.py --date 2023-10-15 --start "09:00" --save
+    python plot_goes_cod.py --date 2023-11-20 --start "14:30" --save
+
+Arguments:
+    --date   YYYY-MM-DD   Date to visualize (required)
+    --start  HH:MM        Local Colombia start time (required)
+                          9 panels are generated every 10 minutes:
+                          start, start+10, start+20 ... start+80
+    --save                Save the figure to outputs/ (optional)
+
+Satellite: GOES-16 | Product: ABI-L2-CODF
 Colombia local time is UTC-5, so UTC = local + 5h.
 """
 
+import argparse
 import os
 from datetime import datetime, timedelta, timezone
 
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import numpy as np
@@ -32,7 +43,7 @@ from goes2go import GOES
 # -----------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Fixed configuration (location, product, colormap)
 # ---------------------------------------------------------------------------
 
 LAT_CENTER = 6.2591538
@@ -43,10 +54,9 @@ LAT_MAX = LAT_CENTER + 0.45
 LON_MIN = LON_CENTER - 0.46
 LON_MAX = LON_CENTER + 0.46
 
-DATE_STR = "2023-10-15"
-SATELLITE = 16
-PRODUCT = "ABI-L2-CODF"
-UTC_OFFSET = 5  # Colombia is UTC-5  →  UTC = local + 5
+SATELLITE  = 16
+PRODUCT    = "ABI-L2-CODF"
+UTC_OFFSET = 5  # Colombia is UTC-5 -> UTC = local + 5
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "outputs")
 os.makedirs(OUTPUT_DIR, exist_ok=True)
@@ -56,28 +66,8 @@ COD_VMIN = 0
 COD_VMAX = 25
 
 # ---------------------------------------------------------------------------
-# Sequence definitions
-# Each entry: (slug, display_label, list_of_local_(hour, minute) tuples)
+# Helpers
 # ---------------------------------------------------------------------------
-
-SEQUENCES = [
-    (
-        "madrugada",
-        "Early Morning (Madrugada)",
-        [(2, 0), (2, 10), (2, 20), (2, 30), (2, 40), (2, 50), (3, 0), (3, 10), (3, 20)],
-    ),
-    (
-        "amanecer",
-        "Dawn Transition (Amanecer)",
-        [(5, 50), (6, 0), (6, 10), (6, 20), (6, 30), (6, 40), (6, 50), (7, 0), (7, 10)],
-    ),
-    (
-        "mediodia",
-        "Midday (Mediodía)",
-        [(12, 0), (12, 10), (12, 20), (12, 30), (12, 40), (12, 50), (13, 0), (13, 10), (13, 20)],
-    ),
-]
-
 
 def local_to_utc(date_str: str, hour: int, minute: int) -> datetime:
     """Convert a Colombia local time (UTC-5) to UTC datetime."""
@@ -87,7 +77,7 @@ def local_to_utc(date_str: str, hour: int, minute: int) -> datetime:
 
 
 def format_local_time(hour: int, minute: int) -> str:
-    """Return a human-readable local time string, e.g. '2:00 AM'."""
+    """Return a human-readable local time string, e.g. '9:00 AM'."""
     dt = datetime(2000, 1, 1, hour, minute)
     return dt.strftime("%I:%M %p").lstrip("0") or "12:00 AM"
 
@@ -129,12 +119,12 @@ def get_latlon(ds):
     try:
         proj_info = ds["goes_imager_projection"]
         lon_origin = proj_info.attrs["longitude_of_projection_origin"]
-        H = proj_info.attrs["perspective_point_height"] + proj_info.attrs["semi_major_axis"]
-        r_eq = proj_info.attrs["semi_major_axis"]
+        H   = proj_info.attrs["perspective_point_height"] + proj_info.attrs["semi_major_axis"]
+        r_eq  = proj_info.attrs["semi_major_axis"]
         r_pol = proj_info.attrs["semi_minor_axis"]
 
         x = ds["x"].values  # scan angle in radians
-        y = ds["y"].values  # scan angle in radians
+        y = ds["y"].values
 
         X, Y = np.meshgrid(x, y)
 
@@ -159,71 +149,65 @@ def get_latlon(ds):
         return None, None
 
 
+# ---------------------------------------------------------------------------
+# Download
+# ---------------------------------------------------------------------------
+
 def download_cod(utc_dt: datetime):
     """
     Download GOES-16 ABI-L2-CODF nearest to utc_dt and return cropped arrays.
 
-    Uses a ±15 minute window (wider than scan cadence) so goes2go's timestamp
-    comparison reliably finds a match, then opens the first file directly.
+    Crops to the study domain before returning so that cartopy only transforms
+    ~50x50 pixels instead of ~2713x2713, avoiding memory allocation errors.
 
     Returns
     -------
-    (cod_vals, lons, lats) — all numpy arrays masked to the study domain
+    (cod_vals, lons, lats) numpy arrays cropped to the study domain,
     or None if download or processing fails.
     """
     try:
         G = GOES(satellite=SATELLITE, product=PRODUCT)
 
-        ts = pd.Timestamp(utc_dt)
+        ts    = pd.Timestamp(utc_dt)
         start = (ts - pd.Timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M")
         end   = (ts + pd.Timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M")
 
-        print(f"    Searching files {start} – {end} UTC …", end=" ", flush=True)
+        print(f"    Searching files {start} - {end} UTC ...", end=" ", flush=True)
 
         df = G.df(start=start, end=end)
         if df is None or len(df) == 0:
             print("no files found.")
             return None
 
-        print(f"{len(df)} file(s) found. Opening from S3 …", end=" ", flush=True)
+        print(f"{len(df)} file(s) found. Opening from S3 ...", end=" ", flush=True)
 
-        # Open the nearest file directly from AWS S3 (no local download)
         import s3fs
         fs = s3fs.S3FileSystem(anon=True)
         s3_path = df.iloc[0]["file"]
 
         with fs.open(s3_path, "rb") as f:
             ds = xr.open_dataset(f, engine="h5netcdf")
-
             print("done.")
 
-            # Extract COD variable — try_variable_names returns (name, DataArray)
             var_name, cod_da = try_variable_names(ds)
             print(f"    Variable used: '{var_name}'")
 
-            # Get lat/lon arrays
             lats, lons = get_latlon(ds)
             if lats is None:
                 print("    Could not determine lat/lon.")
                 return None
 
             # Find row/col indices within domain bounding box
-            row_mask = np.any(
-                (lats >= LAT_MIN) & (lats <= LAT_MAX), axis=1
-            )
-            col_mask = np.any(
-                (lons >= LON_MIN) & (lons <= LON_MAX), axis=0
-            )
+            row_mask = np.any((lats >= LAT_MIN) & (lats <= LAT_MAX), axis=1)
+            col_mask = np.any((lons >= LON_MIN) & (lons <= LON_MAX), axis=0)
 
             if not row_mask.any() or not col_mask.any():
-                print("    WARNING: domain mask returned no pixels — check lat/lon range.")
+                print("    WARNING: domain mask returned no pixels.")
                 return None
 
             cod_vals = cod_da.values.astype(float)
 
-            # Crop all arrays to domain bounding box (~50×50 pixels instead of ~2713×2713)
-            # This avoids the "Unable to allocate 168 MiB" error when cartopy tries to
-            # transform every pixel of the full-disk image before clipping.
+            # Crop all arrays to domain bounding box before passing to cartopy
             lats_crop = lats[np.ix_(row_mask, col_mask)]
             lons_crop = lons[np.ix_(row_mask, col_mask)]
             cod_crop  = cod_vals[np.ix_(row_mask, col_mask)]
@@ -242,15 +226,22 @@ def download_cod(utc_dt: datetime):
         return None
 
 
-def plot_sequence(slug: str, label: str, local_times: list):
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
+def plot_sequence(slug: str, label: str, local_times: list,
+                  date_str: str, save: bool):
     """
-    Build and save a 3×3 panel figure for one sequence.
+    Build a 3x3 panel figure for the given date and list of local times.
 
     Parameters
     ----------
-    slug        : filename slug, e.g. "madrugada"
-    label       : figure title label, e.g. "Early Morning (Madrugada)"
+    slug        : filename slug, e.g. "09-00"
+    label       : figure title label
     local_times : list of 9 (hour, minute) tuples in Colombia local time
+    date_str    : 'YYYY-MM-DD'
+    save        : whether to write the figure to disk
     """
     proj = ccrs.PlateCarree()
     fig, axes = plt.subplots(
@@ -262,124 +253,92 @@ def plot_sequence(slug: str, label: str, local_times: list):
     fig.subplots_adjust(hspace=0.08, wspace=0.05, bottom=0.08, top=0.93)
 
     fig.suptitle(
-        f"GOES-16 Cloud Optical Depth — {label}\n{DATE_STR}",
+        f"GOES-16 Cloud Optical Depth | {label}",
         fontsize=14,
         fontweight="bold",
         y=0.96,
     )
 
     print(f"\n{'='*60}")
-    print(f"Sequence: {label}")
+    print(f"COD | {label}")
     print(f"{'='*60}")
 
-    pcm_ref = None  # store one pcolormesh handle for the colorbar
+    pcm_ref = None
 
     for idx, (hour, minute) in enumerate(local_times):
         ax = axes.flat[idx]
-        utc_dt = local_to_utc(DATE_STR, hour, minute)
+        utc_dt     = local_to_utc(date_str, hour, minute)
         time_label = format_local_time(hour, minute)
 
-        print(f"\n  Panel {idx+1}/9 — {time_label} local ({utc_dt.strftime('%H:%M')} UTC):")
+        print(f"\n  Panel {idx+1}/9 - {time_label} local ({utc_dt.strftime('%H:%M')} UTC):")
 
         result = download_cod(utc_dt)
 
-        # Map extent
         ax.set_extent([LON_MIN, LON_MAX, LAT_MIN, LAT_MAX], crs=proj)
-
-        # Cartopy features
         ax.add_feature(cfeature.BORDERS, linewidth=0.8, edgecolor="black")
         ax.add_feature(
-            cfeature.NaturalEarthFeature(
-                "physical", "rivers_lake_centerlines", "50m"
-            ),
-            linewidth=0.5,
-            edgecolor="steelblue",
-            facecolor="none",
+            cfeature.NaturalEarthFeature("physical", "rivers_lake_centerlines", "50m"),
+            linewidth=0.5, edgecolor="steelblue", facecolor="none",
         )
 
         if result is not None:
-            cod_vals, lons_plot_raw, lats_plot_raw = result
+            cod_vals, lons_crop, lats_crop = result
 
-            # Mask limb pixels where geostationary projection yields NaN lat/lon
-            valid = (
-                np.isfinite(lons_plot_raw) &
-                np.isfinite(lats_plot_raw) &
-                np.isfinite(cod_vals)
-            )
+            valid     = np.isfinite(lons_crop) & np.isfinite(lats_crop) & np.isfinite(cod_vals)
             cod_plot  = np.where(valid, cod_vals, np.nan)
-            lons_plot = np.where(np.isfinite(lons_plot_raw), lons_plot_raw, 0.0)
-            lats_plot = np.where(np.isfinite(lats_plot_raw), lats_plot_raw, 0.0)
+            lons_plot = np.where(np.isfinite(lons_crop), lons_crop, 0.0)
+            lats_plot = np.where(np.isfinite(lats_crop), lats_crop, 0.0)
 
             if valid.any():
                 pcm = ax.pcolormesh(
                     lons_plot, lats_plot, cod_plot,
-                    cmap=COD_CMAP,
-                    vmin=COD_VMIN,
-                    vmax=COD_VMAX,
-                    transform=proj,
-                    shading="auto",
+                    cmap=COD_CMAP, vmin=COD_VMIN, vmax=COD_VMAX,
+                    transform=proj, shading="auto",
                 )
                 pcm_ref = pcm
             else:
                 ax.set_facecolor("#d0d0d0")
-                ax.text(
-                    0.5, 0.5, "No data\navailable",
-                    transform=ax.transAxes,
-                    ha="center", va="center",
-                    fontsize=10, color="gray",
-                )
+                ax.text(0.5, 0.5, "No data\navailable",
+                        transform=ax.transAxes, ha="center", va="center",
+                        fontsize=10, color="gray")
         else:
             ax.set_facecolor("#d0d0d0")
-            ax.text(
-                0.5, 0.5, "No data available",
-                transform=ax.transAxes,
-                ha="center", va="center",
-                fontsize=10, color="#444444",
-            )
+            ax.text(0.5, 0.5, "No data available",
+                    transform=ax.transAxes, ha="center", va="center",
+                    fontsize=10, color="#444444")
 
         # Red star at SIATA station
-        ax.plot(
-            LON_CENTER, LAT_CENTER,
-            marker="*", color="red", markersize=10,
-            transform=proj, zorder=5,
-        )
+        ax.plot(LON_CENTER, LAT_CENTER,
+                marker="*", color="red", markersize=10,
+                transform=proj, zorder=5)
 
-        # Panel title
         ax.set_title(time_label, fontsize=10, pad=4)
 
-        # Minimal gridlines for orientation
-        gl = ax.gridlines(
-            draw_labels=False,
-            linewidth=0.3, color="gray", alpha=0.5, linestyle="--",
-        )
+        gl = ax.gridlines(draw_labels=False,
+                          linewidth=0.3, color="gray", alpha=0.5, linestyle="--")
         gl.xlocator = mticker.FixedLocator(
-            np.arange(round(LON_MIN, 1) - 0.1, LON_MAX + 0.1, 0.2)
-        )
+            np.arange(round(LON_MIN, 1) - 0.1, LON_MAX + 0.1, 0.2))
         gl.ylocator = mticker.FixedLocator(
-            np.arange(round(LAT_MIN, 1) - 0.1, LAT_MAX + 0.1, 0.2)
-        )
+            np.arange(round(LAT_MIN, 1) - 0.1, LAT_MAX + 0.1, 0.2))
 
     # Shared horizontal colorbar
     cbar_ax = fig.add_axes([0.15, 0.04, 0.70, 0.018])
     if pcm_ref is not None:
         cb = fig.colorbar(pcm_ref, cax=cbar_ax, orientation="horizontal")
-        cb.set_label("Cloud Optical Depth — higher = denser cloud", fontsize=11)
-        cb.ax.tick_params(labelsize=9)
     else:
-        # All panels failed — draw a placeholder colorbar from a dummy image
-        import matplotlib.cm as mplcm
-        import matplotlib.colors as mcolors
         norm = mcolors.Normalize(vmin=COD_VMIN, vmax=COD_VMAX)
-        sm = plt.cm.ScalarMappable(cmap=COD_CMAP, norm=norm)
+        sm   = plt.cm.ScalarMappable(cmap=COD_CMAP, norm=norm)
         sm.set_array([])
         cb = fig.colorbar(sm, cax=cbar_ax, orientation="horizontal")
-        cb.set_label("Cloud Optical Depth — higher = denser cloud", fontsize=11)
-        cb.ax.tick_params(labelsize=9)
+    cb.set_label("Cloud Optical Depth - higher = denser cloud", fontsize=11)
+    cb.ax.tick_params(labelsize=9)
 
-    out_path = os.path.join(OUTPUT_DIR, f"COD_GOES16_{slug}_{DATE_STR}.png")
-    fig.savefig(out_path, dpi=120, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n  Saved → {out_path}")
+    if save:
+        out_path = os.path.join(OUTPUT_DIR, f"COD_GOES16_{date_str}_{slug}.png")
+        fig.savefig(out_path, dpi=120, bbox_inches="tight")
+        print(f"\n  Saved -> {out_path}")
+
+    plt.show()
 
 
 # ---------------------------------------------------------------------------
@@ -387,7 +346,26 @@ def plot_sequence(slug: str, label: str, local_times: list):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    for slug, label, local_times in SEQUENCES:
-        plot_sequence(slug, label, local_times)
+    import argparse
 
-    print("\nAll sequences complete.")
+    parser = argparse.ArgumentParser(
+        description="Plot GOES-16 COD over Valle de Aburra for a given date and start time."
+    )
+    parser.add_argument("--date", required=True,
+                        help="Date in YYYY-MM-DD format")
+    parser.add_argument("--start", required=True,
+                        help="Start time in HH:MM local Colombia time")
+    parser.add_argument("--save", action="store_true",
+                        help="Save the output image")
+    args = parser.parse_args()
+
+    start_hour, start_min = map(int, args.start.split(":"))
+    local_times = []
+    for i in range(9):
+        total_min = start_hour * 60 + start_min + i * 10
+        local_times.append((total_min // 60, total_min % 60))
+
+    slug  = args.start.replace(":", "-")
+    label = f"{args.date} from {args.start} (local Colombia)"
+
+    plot_sequence(slug, label, local_times, args.date, args.save)

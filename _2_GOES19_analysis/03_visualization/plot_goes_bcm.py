@@ -1,12 +1,21 @@
 """
 Visualize GOES-16 ABI Binary Cloud Mask (BCM) over the Valle de Aburrá.
 
-Three 3x3 panel figures covering:
-  - Early morning (madrugada): 02:00-03:20 local
-  - Dawn transition (amanecer): 05:50-07:10 local
-  - Midday (mediodia): 12:00-13:20 local
+Generates a single 3x3 figure with 9 panels, one per 10-minute step
+starting from a user-supplied local Colombia time.
 
-Date: 2023-10-15 | Satellite: GOES-16 | Product: ABI-L2-BCMF
+Usage:
+    python plot_goes_bcm.py --date 2023-10-15 --start "09:00" --save
+    python plot_goes_bcm.py --date 2023-11-20 --start "14:30" --save
+
+Arguments:
+    --date   YYYY-MM-DD   Date to visualize (required)
+    --start  HH:MM        Local Colombia start time (required)
+                          9 panels are generated every 10 minutes:
+                          start, start+10, start+20 ... start+80
+    --save                Save the figure to outputs/ (optional)
+
+Satellite: GOES-16 | Product: ABI-L2-ACMF (BCM variable inside)
 Colombia local time is UTC-5, so UTC = local + 5h.
 
 BCM categories:
@@ -37,7 +46,7 @@ from goes2go import GOES
 # -----------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Configuration
+# Fixed configuration (location, product, colormap)
 # ---------------------------------------------------------------------------
 
 LAT_CENTER = 6.2591538
@@ -48,11 +57,10 @@ LAT_MAX = LAT_CENTER + 0.45
 LON_MIN = LON_CENTER - 0.46
 LON_MAX = LON_CENTER + 0.46
 
-DATE_STR = "2023-10-15"
-SATELLITE = 16
+SATELLITE  = 16
 # ABI-L2-BCMF does not exist as a standalone product.
 # The BCM (binary) variable is packaged inside the ACM full-disk file.
-PRODUCT = "ABI-L2-ACMF"
+PRODUCT    = "ABI-L2-ACMF"
 UTC_OFFSET = 5  # Colombia is UTC-5 -> UTC = local + 5
 
 OUTPUT_DIR = os.path.join(os.path.dirname(__file__), "outputs")
@@ -66,27 +74,8 @@ BCM_CMAP   = mcolors.ListedColormap(BCM_COLORS)
 BCM_NORM   = mcolors.BoundaryNorm([-0.5, 0.5, 1.5], BCM_CMAP.N)
 
 # ---------------------------------------------------------------------------
-# Sequence definitions
+# Helpers
 # ---------------------------------------------------------------------------
-
-SEQUENCES = [
-    (
-        "madrugada",
-        "Early Morning (Madrugada)",
-        [(2, 0), (2, 10), (2, 20), (2, 30), (2, 40), (2, 50), (3, 0), (3, 10), (3, 20)],
-    ),
-    (
-        "amanecer",
-        "Dawn Transition (Amanecer)",
-        [(5, 50), (6, 0), (6, 10), (6, 20), (6, 30), (6, 40), (6, 50), (7, 0), (7, 10)],
-    ),
-    (
-        "mediodia",
-        "Midday (Mediodia)",
-        [(12, 0), (12, 10), (12, 20), (12, 30), (12, 40), (12, 50), (13, 0), (13, 10), (13, 20)],
-    ),
-]
-
 
 def local_to_utc(date_str: str, hour: int, minute: int) -> datetime:
     """Convert a Colombia local time (UTC-5) to UTC datetime."""
@@ -96,7 +85,7 @@ def local_to_utc(date_str: str, hour: int, minute: int) -> datetime:
 
 
 def format_local_time(hour: int, minute: int) -> str:
-    """Return a human-readable local time string, e.g. '2:00 AM'."""
+    """Return a human-readable local time string, e.g. '9:00 AM'."""
     dt = datetime(2000, 1, 1, hour, minute)
     return dt.strftime("%I:%M %p").lstrip("0") or "12:00 AM"
 
@@ -243,9 +232,13 @@ def get_latlon_domain(ds, lat_min, lat_max, lon_min, lon_max, buffer=1.0):
         return None, None, None, None
 
 
+# ---------------------------------------------------------------------------
+# Download
+# ---------------------------------------------------------------------------
+
 def download_bcm(utc_dt: datetime):
     """
-    Download GOES-16 ABI-L2-BCMF nearest to utc_dt and return cropped arrays.
+    Download GOES-16 ABI-L2-ACMF nearest to utc_dt and extract the BCM variable.
 
     Only the domain subset (~100x100 pixels) is ever held in memory --
     the full-disk geostationary grid (5424x5424) is never fully allocated,
@@ -258,7 +251,7 @@ def download_bcm(utc_dt: datetime):
     try:
         G = GOES(satellite=SATELLITE, product=PRODUCT)
 
-        ts = pd.Timestamp(utc_dt)
+        ts    = pd.Timestamp(utc_dt)
         start = (ts - pd.Timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M")
         end   = (ts + pd.Timedelta(minutes=15)).strftime("%Y-%m-%d %H:%M")
 
@@ -277,7 +270,6 @@ def download_bcm(utc_dt: datetime):
 
         with fs.open(s3_path, "rb") as f:
             ds = xr.open_dataset(f, engine="h5netcdf")
-
             print("done.")
 
             var_name, bcm_da = try_variable_names(ds)
@@ -307,15 +299,22 @@ def download_bcm(utc_dt: datetime):
         return None
 
 
-def plot_sequence(slug: str, label: str, local_times: list):
+# ---------------------------------------------------------------------------
+# Plotting
+# ---------------------------------------------------------------------------
+
+def plot_sequence(slug: str, label: str, local_times: list,
+                  date_str: str, save: bool):
     """
-    Build and save a 3x3 panel figure for one sequence.
+    Build a 3x3 panel figure for the given date and list of local times.
 
     Parameters
     ----------
-    slug        : filename slug, e.g. "madrugada"
-    label       : figure title label, e.g. "Early Morning (Madrugada)"
+    slug        : filename slug, e.g. "09-00"
+    label       : figure title label
     local_times : list of 9 (hour, minute) tuples in Colombia local time
+    date_str    : 'YYYY-MM-DD'
+    save        : whether to write the figure to disk
     """
     proj = ccrs.PlateCarree()
     fig, axes = plt.subplots(
@@ -327,21 +326,21 @@ def plot_sequence(slug: str, label: str, local_times: list):
     fig.subplots_adjust(hspace=0.08, wspace=0.05, bottom=0.08, top=0.93)
 
     fig.suptitle(
-        f"GOES-16 Binary Cloud Mask (BCM) - {label}\n{DATE_STR}",
+        f"GOES-16 Binary Cloud Mask (BCM) | {label}",
         fontsize=14,
         fontweight="bold",
         y=0.96,
     )
 
     print(f"\n{'='*60}")
-    print(f"Sequence: {label}")
+    print(f"BCM | {label}")
     print(f"{'='*60}")
 
-    pcm_ref = None  # store one pcolormesh handle for the colorbar
+    pcm_ref = None
 
     for idx, (hour, minute) in enumerate(local_times):
         ax = axes.flat[idx]
-        utc_dt = local_to_utc(DATE_STR, hour, minute)
+        utc_dt     = local_to_utc(date_str, hour, minute)
         time_label = format_local_time(hour, minute)
 
         print(f"\n  Panel {idx+1}/9 - {time_label} local ({utc_dt.strftime('%H:%M')} UTC):")
@@ -349,25 +348,16 @@ def plot_sequence(slug: str, label: str, local_times: list):
         result = download_bcm(utc_dt)
 
         ax.set_extent([LON_MIN, LON_MAX, LAT_MIN, LAT_MAX], crs=proj)
-
         ax.add_feature(cfeature.BORDERS, linewidth=0.8, edgecolor="black")
         ax.add_feature(
-            cfeature.NaturalEarthFeature(
-                "physical", "rivers_lake_centerlines", "50m"
-            ),
-            linewidth=0.5,
-            edgecolor="steelblue",
-            facecolor="none",
+            cfeature.NaturalEarthFeature("physical", "rivers_lake_centerlines", "50m"),
+            linewidth=0.5, edgecolor="steelblue", facecolor="none",
         )
 
         if result is not None:
             bcm_vals, lons_crop, lats_crop = result
 
-            valid = (
-                np.isfinite(lons_crop) &
-                np.isfinite(lats_crop) &
-                np.isfinite(bcm_vals)
-            )
+            valid     = np.isfinite(lons_crop) & np.isfinite(lats_crop) & np.isfinite(bcm_vals)
             bcm_plot  = np.where(valid, bcm_vals, np.nan)
             lons_plot = np.where(np.isfinite(lons_crop), lons_crop, 0.0)
             lats_plot = np.where(np.isfinite(lats_crop), lats_crop, 0.0)
@@ -375,68 +365,54 @@ def plot_sequence(slug: str, label: str, local_times: list):
             if valid.any():
                 pcm = ax.pcolormesh(
                     lons_plot, lats_plot, bcm_plot,
-                    cmap=BCM_CMAP,
-                    norm=BCM_NORM,
-                    transform=proj,
-                    shading="auto",
+                    cmap=BCM_CMAP, norm=BCM_NORM,
+                    transform=proj, shading="auto",
                 )
                 pcm_ref = pcm
             else:
                 ax.set_facecolor("#d0d0d0")
-                ax.text(
-                    0.5, 0.5, "No data\navailable",
-                    transform=ax.transAxes,
-                    ha="center", va="center",
-                    fontsize=10, color="gray",
-                )
+                ax.text(0.5, 0.5, "No data\navailable",
+                        transform=ax.transAxes, ha="center", va="center",
+                        fontsize=10, color="gray")
         else:
             ax.set_facecolor("#d0d0d0")
-            ax.text(
-                0.5, 0.5, "No data available",
-                transform=ax.transAxes,
-                ha="center", va="center",
-                fontsize=10, color="#444444",
-            )
+            ax.text(0.5, 0.5, "No data available",
+                    transform=ax.transAxes, ha="center", va="center",
+                    fontsize=10, color="#444444")
 
         # Red star at SIATA station
-        ax.plot(
-            LON_CENTER, LAT_CENTER,
-            marker="*", color="red", markersize=10,
-            transform=proj, zorder=5,
-        )
+        ax.plot(LON_CENTER, LAT_CENTER,
+                marker="*", color="red", markersize=10,
+                transform=proj, zorder=5)
 
         ax.set_title(time_label, fontsize=10, pad=4)
 
-        gl = ax.gridlines(
-            draw_labels=False,
-            linewidth=0.3, color="gray", alpha=0.5, linestyle="--",
-        )
+        gl = ax.gridlines(draw_labels=False,
+                          linewidth=0.3, color="gray", alpha=0.5, linestyle="--")
         gl.xlocator = mticker.FixedLocator(
-            np.arange(round(LON_MIN, 1) - 0.1, LON_MAX + 0.1, 0.2)
-        )
+            np.arange(round(LON_MIN, 1) - 0.1, LON_MAX + 0.1, 0.2))
         gl.ylocator = mticker.FixedLocator(
-            np.arange(round(LAT_MIN, 1) - 0.1, LAT_MAX + 0.1, 0.2)
-        )
+            np.arange(round(LAT_MIN, 1) - 0.1, LAT_MAX + 0.1, 0.2))
 
     # Shared horizontal colorbar with discrete BCM category labels
     cbar_ax = fig.add_axes([0.15, 0.04, 0.70, 0.018])
-
     if pcm_ref is not None:
         cb = fig.colorbar(pcm_ref, cax=cbar_ax, orientation="horizontal")
     else:
         sm = plt.cm.ScalarMappable(cmap=BCM_CMAP, norm=BCM_NORM)
         sm.set_array([])
         cb = fig.colorbar(sm, cax=cbar_ax, orientation="horizontal")
-
     cb.set_ticks(BCM_TICKS)
     cb.set_ticklabels(BCM_LABELS)
     cb.set_label("Binary Cloud Mask", fontsize=11)
     cb.ax.tick_params(labelsize=9)
 
-    out_path = os.path.join(OUTPUT_DIR, f"BCM_GOES16_{slug}_{DATE_STR}.png")
-    fig.savefig(out_path, dpi=120, bbox_inches="tight")
-    plt.close(fig)
-    print(f"\n  Saved -> {out_path}")
+    if save:
+        out_path = os.path.join(OUTPUT_DIR, f"BCM_GOES16_{date_str}_{slug}.png")
+        fig.savefig(out_path, dpi=120, bbox_inches="tight")
+        print(f"\n  Saved -> {out_path}")
+
+    plt.show()
 
 
 # ---------------------------------------------------------------------------
@@ -444,7 +420,26 @@ def plot_sequence(slug: str, label: str, local_times: list):
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
-    for slug, label, local_times in SEQUENCES:
-        plot_sequence(slug, label, local_times)
+    import argparse
 
-    print("\nAll sequences complete.")
+    parser = argparse.ArgumentParser(
+        description="Plot GOES-16 BCM over Valle de Aburra for a given date and start time."
+    )
+    parser.add_argument("--date", required=True,
+                        help="Date in YYYY-MM-DD format")
+    parser.add_argument("--start", required=True,
+                        help="Start time in HH:MM local Colombia time")
+    parser.add_argument("--save", action="store_true",
+                        help="Save the output image")
+    args = parser.parse_args()
+
+    start_hour, start_min = map(int, args.start.split(":"))
+    local_times = []
+    for i in range(9):
+        total_min = start_hour * 60 + start_min + i * 10
+        local_times.append((total_min // 60, total_min % 60))
+
+    slug  = args.start.replace(":", "-")
+    label = f"{args.date} from {args.start} (local Colombia)"
+
+    plot_sequence(slug, label, local_times, args.date, args.save)
