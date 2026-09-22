@@ -5,3 +5,4 @@ __pycache__/
 *.pyc 
 .claude/ 
 _3_Data_preparation_for_LSTM/Preparation_data/ERA5_climatology/
+_book/_build/

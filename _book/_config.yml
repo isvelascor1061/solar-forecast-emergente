@@ -1,0 +1,28 @@
+title: "Predicción de GHI con BiLSTM"
+author: "Isabella Velasco · Emergente"
+logo: ""
+
+execute:
+  execute_notebooks: "off"
+
+html:
+  use_multitoc_numbering: false
+  extra_extensions:
+    - sphinx_togglebutton
+
+sphinx:
+  extra_extensions:
+    - sphinx_togglebutton
+  config:
+    html_theme: "sphinx_book_theme"
+    html_theme_options:
+      pygments_dark_style: "monokai"
+      show_navbar_depth: 2
+      use_download_button: true
+      repository_url: "https://github.com/isvelascor1061/solar-forecast-emergente"
+      use_repository_button: true
+      home_page_in_toc: true
+    # Inject default_mode directly into the Jinja2 template context
+    # (bypasses sphinx-book-theme's theme.conf validation)
+    html_context:
+      default_mode: "dark"
