@@ -357,7 +357,115 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <div class="cell docutils container">
+  <section class="tex2jax_ignore mathjax_ignore" id="prediccion-de-ghi-irradiancia-horizontal-global-con-bilstm">
+<h1>Predicción de GHI (Irradiancia Horizontal Global) con BiLSTM<a class="headerlink" href="#prediccion-de-ghi-irradiancia-horizontal-global-con-bilstm" title="Permalink to this heading">#</a></h1>
+<p><strong>Demo producto — Valle de Aburrá · Climate Week 2026 · Emergente</strong></p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Paso</p></th>
+<th class="head"><p>Título</p></th>
+<th class="head"><p>Descripción</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>1</p></td>
+<td><p>Configuración</p></td>
+<td><p>Librerías, rutas y paleta de colores</p></td>
+</tr>
+<tr class="row-odd"><td><p>2</p></td>
+<td><p>Datos de entrada</p></td>
+<td><p>La ventana de 37 pasos y 79 variables que el modelo recibe</p></td>
+</tr>
+<tr class="row-even"><td><p>3</p></td>
+<td><p>Arquitectura del modelo</p></td>
+<td><p>Cómo BiLSTM procesa la secuencia temporal</p></td>
+</tr>
+<tr class="row-odd"><td><p>4</p></td>
+<td><p>Las 13 predicciones horarias</p></td>
+<td><p>Tabla CSI × cielo despejado = GHI (W/m²)</p></td>
+</tr>
+<tr class="row-even"><td><p>5</p></td>
+<td><p>Comparación con SIATA</p></td>
+<td><p>Animación: predicción vs. medición real</p></td>
+</tr>
+<tr class="row-odd"><td><p>6</p></td>
+<td><p>Comparación con GFS crudo</p></td>
+<td><p>Animación: BiLSTM vs. GFS vs. SIATA</p></td>
+</tr>
+<tr class="row-even"><td><p>7</p></td>
+<td><p>Producto para el operador</p></td>
+<td><p>Pronóstico entregado a las 4:00 AM</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<hr class="docutils" />
+<p><strong>Fecha objetivo:</strong> 15 de septiembre de 2021<br />
+<strong>Ubicación:</strong> Valle de Aburrá, Medellín (6.25°N, 75.5°W, 1485 m s.n.m.)</p>
+<details>
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# This cell configures Jupyter to hide all
+# code cells and show only outputs
+from IPython.display import Javascript, display
+display(Javascript('''
+...
+</pre>
+</details><section id="paso-2-los-datos-que-entran-al-modelo">
+<h2>Paso 2: Los datos que entran al modelo<a class="headerlink" href="#paso-2-los-datos-que-entran-al-modelo" title="Permalink to this heading">#</a></h2>
+<p>El modelo genera <strong>13 predicciones independientes</strong>, una por cada hora diurna (6:00 AM a 6:00 PM).</p>
+<p>Para predecir cada hora, el modelo recibe una <strong>ventana simétrica de 37 pasos temporales</strong>:</p>
+<div class="pst-scrollable-table-container"><table class="table">
+<thead>
+<tr class="row-odd"><th class="head"><p>Segmento</p></th>
+<th class="head"><p>Pasos</p></th>
+<th class="head"><p>Descripción</p></th>
+</tr>
+</thead>
+<tbody>
+<tr class="row-even"><td><p>Pasado</p></td>
+<td><p>t-18 a t-1 (18 pasos)</p></td>
+<td><p>Pronóstico GFS ya disponible para horas pasadas</p></td>
+</tr>
+<tr class="row-odd"><td><p><strong>Hora central</strong></p></td>
+<td><p><strong>t=0</strong></p></td>
+<td><p><strong>La hora que se quiere predecir</strong></p></td>
+</tr>
+<tr class="row-even"><td><p>Futuro</p></td>
+<td><p>t+1 a t+18 (18 pasos)</p></td>
+<td><p>Pronóstico GFS para las horas siguientes</p></td>
+</tr>
+</tbody>
+</table>
+</div>
+<p><strong>Por cada paso temporal: 79 variables del GFS</strong> (radiación, nubosidad, temperatura, humedad, viento…)</p>
+<blockquote>
+<div><p><strong>Total:</strong> 37 pasos × 79 variables = <strong>2.923 valores de entrada</strong> para predecir <strong>1 hora</strong></p>
+</div></blockquote>
+<section id="ejemplo-predecir-las-12-00pm-del-15-de-septiembre-2021">
+<h3>Ejemplo: predecir las 12:00pm del 15 de septiembre 2021<a class="headerlink" href="#ejemplo-predecir-las-12-00pm-del-15-de-septiembre-2021" title="Permalink to this heading">#</a></h3>
+<ul class="simple">
+<li><p>Ventana inicia: <strong>Sep 14, 18:00</strong> (18 horas antes)</p></li>
+<li><p>Hora central: <strong>Sep 15, 12:00</strong> (la hora a predecir)</p></li>
+<li><p>Ventana termina: <strong>Sep 16, 06:00</strong> (18 horas después)</p></li>
+</ul>
+<details>
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# This cell configures Jupyter to hide all
+# code cells and show only outputs
+from IPython.display import Javascript, display
+display(Javascript('''
+...
+</pre>
+</details><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># This cell configures Jupyter to hide all</span>
+<span class="c1"># code cells and show only outputs</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">Javascript</span><span class="p">,</span> <span class="n">display</span>
+<span class="n">display</span><span class="p">(</span><span class="n">Javascript</span><span class="p">(</span><span class="s1">&#39;&#39;&#39;</span>
+<span class="s1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># This cell configures Jupyter to hide all</span>
 <span class="c1"># code cells and show only outputs</span>
@@ -388,6 +496,13 @@ cells.forEach(function(cell) {
 </pre></div>
 </div>
 </div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Install required packages silently ───────────────────────────</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">subprocess</span><span class="o">,</span><span class="w"> </span><span class="nn">sys</span>
+<span class="n">_PACKAGES</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;xarray&#39;</span><span class="p">,</span> <span class="s1">&#39;h5netcdf&#39;</span><span class="p">,</span> <span class="s1">&#39;pvlib&#39;</span><span class="p">,</span> <span class="s1">&#39;torch&#39;</span><span class="p">,</span> <span class="s1">&#39;pandas&#39;</span><span class="p">,</span> <span class="s1">&#39;numpy&#39;</span><span class="p">,</span> <span class="s1">&#39;matplotlib&#39;</span><span class="p">]</span>
+<span class="k">for</span> <span class="n">_pkg</span> <span class="ow">in</span> <span class="n">_PACKAGES</span><span class="p">:</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -510,230 +625,194 @@ cells.forEach(function(cell) {
 </div>
 </div>
 </div>
-<section class="tex2jax_ignore mathjax_ignore" id="prediccion-de-ghi-irradiancia-horizontal-global-con-bilstm">
-<h1>Predicción de GHI (Irradiancia Horizontal Global) con BiLSTM<a class="headerlink" href="#prediccion-de-ghi-irradiancia-horizontal-global-con-bilstm" title="Permalink to this heading">#</a></h1>
-<p><strong>Demo producto — Valle de Aburrá · Climate Week 2026 · Emergente</strong></p>
-<div class="pst-scrollable-table-container"><table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Paso</p></th>
-<th class="head"><p>Título</p></th>
-<th class="head"><p>Descripción</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>1</p></td>
-<td><p>Configuración</p></td>
-<td><p>Librerías, rutas y paleta de colores</p></td>
-</tr>
-<tr class="row-odd"><td><p>2</p></td>
-<td><p>Datos de entrada</p></td>
-<td><p>La ventana de 37 pasos y 79 variables que el modelo recibe</p></td>
-</tr>
-<tr class="row-even"><td><p>3</p></td>
-<td><p>Arquitectura del modelo</p></td>
-<td><p>Cómo BiLSTM procesa la secuencia temporal</p></td>
-</tr>
-<tr class="row-odd"><td><p>4</p></td>
-<td><p>Las 13 predicciones horarias</p></td>
-<td><p>Tabla CSI × cielo despejado = GHI (W/m²)</p></td>
-</tr>
-<tr class="row-even"><td><p>5</p></td>
-<td><p>Comparación con SIATA</p></td>
-<td><p>Animación: predicción vs. medición real</p></td>
-</tr>
-<tr class="row-odd"><td><p>6</p></td>
-<td><p>Comparación con GFS crudo</p></td>
-<td><p>Animación: BiLSTM vs. GFS vs. SIATA</p></td>
-</tr>
-<tr class="row-even"><td><p>7</p></td>
-<td><p>Producto para el operador</p></td>
-<td><p>Pronóstico entregado a las 4:00 AM</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<hr class="docutils" />
-<p><strong>Fecha objetivo:</strong> 15 de septiembre de 2021<br />
-<strong>Ubicación:</strong> Valle de Aburrá, Medellín (6.25°N, 75.5°W, 1485 m s.n.m.)</p>
-<details>
-<summary>▶ Ver código</summary>
-</details><section id="paso-2-los-datos-que-entran-al-modelo">
-<h2>Paso 2: Los datos que entran al modelo<a class="headerlink" href="#paso-2-los-datos-que-entran-al-modelo" title="Permalink to this heading">#</a></h2>
-<p>El modelo genera <strong>13 predicciones independientes</strong>, una por cada hora diurna (6:00 AM a 6:00 PM).</p>
-<p>Para predecir cada hora, el modelo recibe una <strong>ventana simétrica de 37 pasos temporales</strong>:</p>
-<div class="pst-scrollable-table-container"><table class="table">
-<thead>
-<tr class="row-odd"><th class="head"><p>Segmento</p></th>
-<th class="head"><p>Pasos</p></th>
-<th class="head"><p>Descripción</p></th>
-</tr>
-</thead>
-<tbody>
-<tr class="row-even"><td><p>Pasado</p></td>
-<td><p>t-18 a t-1 (18 pasos)</p></td>
-<td><p>Pronóstico GFS ya disponible para horas pasadas</p></td>
-</tr>
-<tr class="row-odd"><td><p><strong>Hora central</strong></p></td>
-<td><p><strong>t=0</strong></p></td>
-<td><p><strong>La hora que se quiere predecir</strong></p></td>
-</tr>
-<tr class="row-even"><td><p>Futuro</p></td>
-<td><p>t+1 a t+18 (18 pasos)</p></td>
-<td><p>Pronóstico GFS para las horas siguientes</p></td>
-</tr>
-</tbody>
-</table>
-</div>
-<p><strong>Por cada paso temporal: 79 variables del GFS</strong> (radiación, nubosidad, temperatura, humedad, viento…)</p>
-<blockquote>
-<div><p><strong>Total:</strong> 37 pasos × 79 variables = <strong>2.923 valores de entrada</strong> para predecir <strong>1 hora</strong></p>
-</div></blockquote>
-<section id="ejemplo-predecir-las-12-00pm-del-15-de-septiembre-2021">
-<h3>Ejemplo: predecir las 12:00pm del 15 de septiembre 2021<a class="headerlink" href="#ejemplo-predecir-las-12-00pm-del-15-de-septiembre-2021" title="Permalink to this heading">#</a></h3>
-<ul class="simple">
-<li><p>Ventana inicia: <strong>Sep 14, 18:00</strong> (18 horas antes)</p></li>
-<li><p>Hora central: <strong>Sep 15, 12:00</strong> (la hora a predecir)</p></li>
-<li><p>Ventana termina: <strong>Sep 16, 06:00</strong> (18 horas después)</p></li>
-</ul>
-<details>
-<summary>▶ Ver código</summary>
-</details><div class="cell docutils container">
-<div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Graph 1: 13 daytime hours the model predicts ─────────────────</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
-<span class="n">fig</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
-
-<span class="c1"># Night shading (hours 0–5 and 19–23)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">axvspan</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">5.5</span><span class="p">,</span>  <span class="n">alpha</span><span class="o">=</span><span class="mf">0.12</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">axvspan</span><span class="p">(</span><span class="mf">18.5</span><span class="p">,</span> <span class="mf">23.5</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.12</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
-
-<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">2.5</span><span class="p">,</span>  <span class="mf">0.85</span><span class="p">,</span> <span class="s1">&#39;Noche&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
-        <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#777777&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis_transform</span><span class="p">())</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">21.0</span><span class="p">,</span> <span class="mf">0.85</span><span class="p">,</span> <span class="s1">&#39;Noche&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
-        <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#777777&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis_transform</span><span class="p">())</span>
-
-<span class="c1"># Orange circles and upward arrows for the 13 prediction hours</span>
-<span class="k">for</span> <span class="n">h</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">19</span><span class="p">):</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="mf">0.62</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="mf">0.75</span><span class="p">),</span>
-                <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;axes fraction&#39;</span><span class="p">),</span>
-                <span class="n">textcoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;axes fraction&#39;</span><span class="p">),</span>
-                <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.8</span><span class="p">))</span>
-    <span class="n">circle</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">Circle</span><span class="p">((</span><span class="n">h</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="mf">0.35</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">circle</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">h</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.55</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">h</span><span class="si">}</span><span class="s1">:00&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">)</span>
-
-<span class="c1"># Span label &quot;13 predicciones&quot;</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="mf">0.90</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mf">0.90</span><span class="p">),</span>
-            <span class="n">xycoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;axes fraction&#39;</span><span class="p">),</span>
-            <span class="n">textcoords</span><span class="o">=</span><span class="p">(</span><span class="s1">&#39;data&#39;</span><span class="p">,</span> <span class="s1">&#39;axes fraction&#39;</span><span class="p">),</span>
-            <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;&lt;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">))</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">12</span><span class="p">,</span> <span class="mf">0.96</span><span class="p">,</span> <span class="s1">&#39;13 predicciones independientes&#39;</span><span class="p">,</span>
-        <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span>
-        <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">get_xaxis_transform</span><span class="p">())</span>
-
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">23.5</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">1.2</span><span class="p">,</span> <span class="mf">1.5</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">([])</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_yticks</span><span class="p">([])</span>
-<span class="k">for</span> <span class="n">spine</span> <span class="ow">in</span> <span class="n">ax</span><span class="o">.</span><span class="n">spines</span><span class="o">.</span><span class="n">values</span><span class="p">():</span>
-    <span class="n">spine</span><span class="o">.</span><span class="n">set_visible</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">grid</span><span class="p">(</span><span class="kc">False</span><span class="p">)</span>
-
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Las 13 horas diurnas que predice el modelo&#39;</span><span class="p">,</span>
-             <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">14</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.12</span><span class="p">,</span> <span class="s1">&#39;Una predicción independiente por hora · cada una usa una ventana de 37 pasos&#39;</span><span class="p">,</span>
-        <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-        <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#666666&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;italic&#39;</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;graph1_13hours.png&#39;</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Graph 1: animated 13 daytime rectangles appearing one by one ─</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpatches</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">FancyBboxPatch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.animation</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">animation</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
 </pre></div>
-</div>
-</div>
-<div class="cell_output docutils container">
-<img alt="_images/e370b93e640867247d74b3d38ea3336c3a328f301157bb6927d6c4d0a342fc39.png" src="_images/e370b93e640867247d74b3d38ea3336c3a328f301157bb6927d6c4d0a342fc39.png" />
-</div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Graph 2: symmetric 37-step window centred at 2021-09-15 12:00 ─</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
-<span class="n">fig</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">38</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">4.5</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Graph 1: animated 13 daytime rectangles appearing one by one ─</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">mpatches</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">matplotlib.patches</span><span class="w"> </span><span class="kn">import</span> <span class="n">FancyBboxPatch</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">matplotlib.animation</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">animation</span>
+<span class="kn">from</span><span class="w"> </span><span class="nn">IPython.display</span><span class="w"> </span><span class="kn">import</span> <span class="n">HTML</span><span class="p">,</span> <span class="n">display</span>
 
-<span class="n">center_ts</span>  <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s1">&#39;2021-09-15 12:00&#39;</span><span class="p">)</span>
-<span class="n">timestamps</span> <span class="o">=</span> <span class="p">[</span><span class="n">center_ts</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">i</span> <span class="o">-</span> <span class="mi">18</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">37</span><span class="p">)]</span>
-<span class="n">box_w</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">=</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.85</span>
+<span class="n">HOURS_DAY</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="mi">6</span><span class="p">,</span> <span class="mi">19</span><span class="p">))</span>  <span class="c1"># 6am to 6pm</span>
+<span class="n">N_HOURS</span>   <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">HOURS_DAY</span><span class="p">)</span>
 
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">ts</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">timestamps</span><span class="p">):</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_w</span> <span class="o">+</span> <span class="mf">0.08</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="mi">18</span><span class="p">:</span>
-        <span class="n">fc</span><span class="p">,</span> <span class="n">ec</span> <span class="o">=</span> <span class="n">COLOR_PAST</span><span class="p">,</span>   <span class="s1">&#39;#CCCCCC&#39;</span>
-    <span class="k">elif</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">18</span><span class="p">:</span>
-        <span class="n">fc</span><span class="p">,</span> <span class="n">ec</span> <span class="o">=</span> <span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="s1">&#39;#CC8800&#39;</span>
-    <span class="k">else</span><span class="p">:</span>
-        <span class="n">fc</span><span class="p">,</span> <span class="n">ec</span> <span class="o">=</span> <span class="n">COLOR_FUTURE</span><span class="p">,</span> <span class="s1">&#39;#85C1E9&#39;</span>
+<span class="n">fig_h</span><span class="p">,</span> <span class="n">ax_h</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+<span class="n">fig_h</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
+<span class="n">ax_h</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
+<span class="n">ax_h</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="n">N_HOURS</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">)</span>
+<span class="n">ax_h</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">2.0</span><span class="p">)</span>
+<span class="n">ax_h</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
 
-    <span class="n">rect</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">box_w</span><span class="p">,</span> <span class="n">box_h</span><span class="p">,</span> <span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.03&#39;</span><span class="p">,</span>
-                          <span class="n">facecolor</span><span class="o">=</span><span class="n">fc</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="n">ec</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.2</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
+<span class="n">title_h</span> <span class="o">=</span> <span class="n">ax_h</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Las 13 horas diurnas que predice el modelo&#39;</span><span class="p">,</span>
+                          <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">8</span><span class="p">)</span>
+<span class="n">note_h</span>  <span class="o">=</span> <span class="n">ax_h</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.18</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span>
+                    <span class="n">transform</span><span class="o">=</span><span class="n">ax_h</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                    <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;italic&#39;</span><span class="p">)</span>
 
-    <span class="c1"># Step label above (every 6 steps + center)</span>
-    <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">18</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">+</span> <span class="mf">0.18</span><span class="p">,</span> <span class="s1">&#39;t=0&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span>
-                <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">)</span>
-    <span class="k">elif</span> <span class="n">i</span> <span class="o">%</span> <span class="mi">6</span> <span class="o">==</span> <span class="mi">0</span> <span class="ow">or</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">36</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">+</span> <span class="mf">0.15</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;t</span><span class="si">{</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">18</span><span class="si">:</span><span class="s1">+d</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span>
-                <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">)</span>
+<span class="n">box_w</span><span class="p">,</span> <span class="n">box_h_size</span> <span class="o">=</span> <span class="mf">0.78</span><span class="p">,</span> <span class="mf">0.9</span>
+<span class="n">rects_h</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">labels_h</span> <span class="o">=</span> <span class="p">[]</span>
 
-    <span class="c1"># Timestamp below (every 6 steps + center)</span>
-    <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">6</span><span class="p">,</span> <span class="mi">12</span><span class="p">,</span> <span class="mi">18</span><span class="p">,</span> <span class="mi">24</span><span class="p">,</span> <span class="mi">30</span><span class="p">,</span> <span class="mi">36</span><span class="p">):</span>
-        <span class="n">day</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">day</span>
-        <span class="k">if</span> <span class="n">day</span> <span class="o">==</span> <span class="mi">14</span><span class="p">:</span>
-            <span class="n">lbl</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M</span><span class="se">\n</span><span class="s1">Sep 14&#39;</span><span class="p">)</span>
-        <span class="k">elif</span> <span class="n">day</span> <span class="o">==</span> <span class="mi">15</span><span class="p">:</span>
-            <span class="n">lbl</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M</span><span class="se">\n</span><span class="s1">Sep 15&#39;</span><span class="p">)</span>
-        <span class="k">else</span><span class="p">:</span>
-            <span class="n">lbl</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M</span><span class="se">\n</span><span class="s1">Sep 16&#39;</span><span class="p">)</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.22</span><span class="p">,</span> <span class="n">lbl</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
-                <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">18</span> <span class="k">else</span> <span class="s1">&#39;#666666&#39;</span><span class="p">,</span>
-                <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">18</span> <span class="k">else</span> <span class="s1">&#39;normal&#39;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_init_h</span><span class="p">():</span>
+    <span class="k">return</span> <span class="p">[]</span>
 
-<span class="c1"># Arrow above center box</span>
-<span class="n">center_x</span> <span class="o">=</span> <span class="mi">18</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_w</span> <span class="o">+</span> <span class="mf">0.08</span><span class="p">)</span> <span class="o">+</span> <span class="n">box_w</span> <span class="o">/</span> <span class="mi">2</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;CSI predicho&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">center_x</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">+</span> <span class="mf">0.05</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="n">center_x</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">+</span> <span class="mf">1.6</span><span class="p">),</span>
-            <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span>
-            <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span>
-            <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.4&#39;</span><span class="p">,</span> <span class="n">fc</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">ec</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.9</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_update_h</span><span class="p">(</span><span class="n">frame</span><span class="p">):</span>
+    <span class="c1"># Each frame reveals one new rectangle</span>
+    <span class="k">if</span> <span class="n">frame</span> <span class="o">&lt;</span> <span class="n">N_HOURS</span><span class="p">:</span>
+        <span class="n">i</span>    <span class="o">=</span> <span class="n">frame</span>
+        <span class="n">x</span>    <span class="o">=</span> <span class="n">i</span> <span class="o">-</span> <span class="n">box_w</span> <span class="o">/</span> <span class="mi">2</span>
+        <span class="n">rect</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">),</span> <span class="n">box_w</span><span class="p">,</span> <span class="n">box_h_size</span><span class="p">,</span>
+                              <span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.08&#39;</span><span class="p">,</span>
+                              <span class="n">facecolor</span><span class="o">=</span><span class="n">COLOR_BILSTM</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span>
+                              <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">ax_h</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
+        <span class="n">lbl</span> <span class="o">=</span> <span class="n">ax_h</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="mf">0.3</span> <span class="o">+</span> <span class="n">box_h_size</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
+                        <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="n">HOURS_DAY</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="si">}</span><span class="s1">:00&#39;</span><span class="p">,</span>
+                        <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                        <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
+        <span class="n">rects_h</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
+        <span class="n">labels_h</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lbl</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">frame</span> <span class="o">==</span> <span class="n">N_HOURS</span><span class="p">:</span>
+        <span class="c1"># Final frame: add span label</span>
+        <span class="n">note_h</span><span class="o">.</span><span class="n">set_text</span><span class="p">(</span><span class="s1">&#39;13 predicciones independientes  ·  una ventana de 37 pasos por hora&#39;</span><span class="p">)</span>
+        <span class="n">ax_h</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">N_HOURS</span> <span class="o">-</span> <span class="mi">1</span><span class="p">,</span> <span class="mf">1.38</span><span class="p">),</span> <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mf">1.38</span><span class="p">),</span>
+                      <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;&lt;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">))</span>
+        <span class="n">ax_h</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">N_HOURS</span> <span class="o">/</span> <span class="mi">2</span> <span class="o">-</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">1.48</span><span class="p">,</span> <span class="s1">&#39;13 predicciones independientes&#39;</span><span class="p">,</span>
+                  <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span>
+                  <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">rects_h</span> <span class="o">+</span> <span class="n">labels_h</span>
 
-<span class="n">legend_handles</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="n">COLOR_PAST</span><span class="p">,</span>   <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;#CCCCCC&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Pasado (18 pasos)&#39;</span><span class="p">),</span>
-    <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Hora central t=0  (12:00pm Sep 15)&#39;</span><span class="p">),</span>
-    <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="n">COLOR_FUTURE</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;#85C1E9&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Futuro GFS (18 pasos)&#39;</span><span class="p">),</span>
-<span class="p">]</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">handles</span><span class="o">=</span><span class="n">legend_handles</span><span class="p">,</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span>
-          <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.92</span><span class="p">,</span> <span class="n">bbox_to_anchor</span><span class="o">=</span><span class="p">(</span><span class="mf">0.0</span><span class="p">,</span> <span class="mf">1.05</span><span class="p">))</span>
-
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Ventana de 37 pasos — predicción 12:00pm del 15 de septiembre 2021&#39;</span><span class="p">,</span>
-             <span class="n">fontsize</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">pad</span><span class="o">=</span><span class="mi">30</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.18</span><span class="p">,</span> <span class="s1">&#39;El GFS ya tiene pronóstico disponible para todas las horas futuras de la ventana&#39;</span><span class="p">,</span>
-        <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">transform</span><span class="o">=</span><span class="n">ax</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span>
-        <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#666666&#39;</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;italic&#39;</span><span class="p">)</span>
+<span class="n">anim_h</span> <span class="o">=</span> <span class="n">animation</span><span class="o">.</span><span class="n">FuncAnimation</span><span class="p">(</span>
+    <span class="n">fig_h</span><span class="p">,</span> <span class="n">_update_h</span><span class="p">,</span> <span class="n">init_func</span><span class="o">=</span><span class="n">_init_h</span><span class="p">,</span>
+    <span class="n">frames</span><span class="o">=</span><span class="n">N_HOURS</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">200</span><span class="p">,</span> <span class="n">blit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
 
 <span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;graph2_window.png&#39;</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="n">anim_h</span><span class="o">.</span><span class="n">to_jshtml</span><span class="p">()))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig_h</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="_images/1c8bdbb8fd6fa98fd35b02602b8188141c922a34f6421d2fc8fd307e51f370e1.png" src="_images/1c8bdbb8fd6fa98fd35b02602b8188141c922a34f6421d2fc8fd307e51f370e1.png" />
 </div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Graph 2: animated 37-step window ─────────────────────────────</span>
+<span class="n">center_ts</span>  <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s1">&#39;2021-09-15 12:00&#39;</span><span class="p">)</span>
+<span class="n">timestamps</span> <span class="o">=</span> <span class="p">[</span><span class="n">center_ts</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">i</span> <span class="o">-</span> <span class="mi">18</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">37</span><span class="p">)]</span>
+<span class="n">fig_w</span><span class="p">,</span> <span class="n">ax_w</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Graph 2: animated 37-step window ─────────────────────────────</span>
+<span class="n">center_ts</span>  <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timestamp</span><span class="p">(</span><span class="s1">&#39;2021-09-15 12:00&#39;</span><span class="p">)</span>
+<span class="n">timestamps</span> <span class="o">=</span> <span class="p">[</span><span class="n">center_ts</span> <span class="o">+</span> <span class="n">pd</span><span class="o">.</span><span class="n">Timedelta</span><span class="p">(</span><span class="n">hours</span><span class="o">=</span><span class="n">i</span> <span class="o">-</span> <span class="mi">18</span><span class="p">)</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">37</span><span class="p">)]</span>
+
+<span class="n">fig_w</span><span class="p">,</span> <span class="n">ax_w</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">fig_w</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
+<span class="n">ax_w</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
+<span class="n">ax_w</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">38.5</span><span class="p">)</span>
+<span class="n">ax_w</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">2.5</span><span class="p">,</span> <span class="mf">5.0</span><span class="p">)</span>
+<span class="n">ax_w</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
+<span class="n">ax_w</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Ventana de 37 pasos — predicción 12:00pm del 15 sep 2021&#39;</span><span class="p">,</span>
+               <span class="n">fontsize</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.98</span><span class="p">)</span>
+
+<span class="n">box_w_w</span><span class="p">,</span> <span class="n">box_h_w</span> <span class="o">=</span> <span class="mf">0.82</span><span class="p">,</span> <span class="mf">0.85</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_ts_label</span><span class="p">(</span><span class="n">ts</span><span class="p">):</span>
+    <span class="c1"># Short timestamp label for below each box.</span>
+    <span class="n">d</span> <span class="o">=</span> <span class="n">ts</span><span class="o">.</span><span class="n">day</span>
+    <span class="k">if</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">14</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M</span><span class="se">\n</span><span class="s1">Sep14&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">d</span> <span class="o">==</span> <span class="mi">15</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M</span><span class="se">\n</span><span class="s1">Sep15&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M</span><span class="se">\n</span><span class="s1">Sep16&#39;</span><span class="p">)</span>
+
+<span class="n">drawn_rects_w</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">drawn_texts_w</span> <span class="o">=</span> <span class="p">{}</span>
+<span class="n">final_label_w</span> <span class="o">=</span> <span class="n">ax_w</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.12</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span>
+                          <span class="n">transform</span><span class="o">=</span><span class="n">ax_w</span><span class="o">.</span><span class="n">transAxes</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
+                          <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">)</span>
+<span class="n">arrow_w</span> <span class="o">=</span> <span class="kc">None</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_draw_box</span><span class="p">(</span><span class="n">i</span><span class="p">,</span> <span class="n">fc</span><span class="p">,</span> <span class="n">ec</span><span class="p">,</span> <span class="n">text_color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">False</span><span class="p">):</span>
+    <span class="n">x</span> <span class="o">=</span> <span class="n">i</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_w_w</span> <span class="o">+</span> <span class="mf">0.08</span><span class="p">)</span>
+    <span class="n">r</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">box_w_w</span><span class="p">,</span> <span class="n">box_h_w</span><span class="p">,</span> <span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.03&#39;</span><span class="p">,</span>
+                       <span class="n">facecolor</span><span class="o">=</span><span class="n">fc</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="n">ec</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.2</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">bold</span> <span class="k">else</span> <span class="mf">2.5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+    <span class="n">ax_w</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">r</span><span class="p">)</span>
+    <span class="n">ts</span> <span class="o">=</span> <span class="n">timestamps</span><span class="p">[</span><span class="n">i</span><span class="p">]</span>
+    <span class="n">t_lbl</span> <span class="o">=</span> <span class="n">ax_w</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.22</span><span class="p">,</span> <span class="n">_ts_label</span><span class="p">(</span><span class="n">ts</span><span class="p">),</span>
+                      <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mf">7.5</span><span class="p">,</span>
+                      <span class="n">color</span><span class="o">=</span><span class="n">text_color</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span> <span class="k">if</span> <span class="n">bold</span> <span class="k">else</span> <span class="s1">&#39;normal&#39;</span><span class="p">)</span>
+    <span class="n">step</span> <span class="o">=</span> <span class="s1">&#39;t=0&#39;</span> <span class="k">if</span> <span class="n">i</span> <span class="o">==</span> <span class="mi">18</span> <span class="k">else</span> <span class="sa">f</span><span class="s1">&#39;t</span><span class="si">{</span><span class="n">i</span><span class="o">-</span><span class="mi">18</span><span class="si">:</span><span class="s1">+d</span><span class="si">}</span><span class="s1">&#39;</span>
+    <span class="n">s_lbl</span> <span class="o">=</span> <span class="n">ax_w</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">box_h_w</span> <span class="o">+</span> <span class="mf">0.1</span><span class="p">,</span> <span class="n">step</span><span class="p">,</span>
+                      <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+                      <span class="n">color</span><span class="o">=</span><span class="n">text_color</span> <span class="k">if</span> <span class="ow">not</span> <span class="n">bold</span> <span class="k">else</span> <span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span>
+                      <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span> <span class="k">if</span> <span class="n">bold</span> <span class="k">else</span> <span class="s1">&#39;normal&#39;</span><span class="p">)</span>
+    <span class="n">drawn_rects_w</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="n">r</span>
+    <span class="n">drawn_texts_w</span><span class="p">[</span><span class="n">i</span><span class="p">]</span> <span class="o">=</span> <span class="p">(</span><span class="n">t_lbl</span><span class="p">,</span> <span class="n">s_lbl</span><span class="p">)</span>
+
+<span class="c1"># Phase lengths</span>
+<span class="c1"># Phase 1: frames 0–5  → center box only</span>
+<span class="c1"># Phase 2: frames 6–23 → past boxes appear right-to-left (t-1..t-18)</span>
+<span class="c1"># Phase 3: frames 24–41 → future boxes left-to-right (t+1..t+18)</span>
+<span class="c1"># Phase 4: frames 42–50 → all visible + label + arrow</span>
+
+<span class="k">def</span><span class="w"> </span><span class="nf">_update_w</span><span class="p">(</span><span class="n">frame</span><span class="p">):</span>
+    <span class="k">global</span> <span class="n">arrow_w</span>
+    <span class="k">if</span> <span class="n">frame</span> <span class="o">&lt;=</span> <span class="mi">5</span><span class="p">:</span>
+        <span class="k">if</span> <span class="mi">18</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">drawn_rects_w</span><span class="p">:</span>
+            <span class="n">_draw_box</span><span class="p">(</span><span class="mi">18</span><span class="p">,</span> <span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span> <span class="s1">&#39;#7B3F00&#39;</span><span class="p">,</span> <span class="n">bold</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+            <span class="c1"># &quot;Hora a predecir&quot; label above</span>
+            <span class="n">x_c</span> <span class="o">=</span> <span class="mi">18</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_w_w</span> <span class="o">+</span> <span class="mf">0.08</span><span class="p">)</span> <span class="o">+</span> <span class="n">box_w_w</span><span class="o">/</span><span class="mi">2</span>
+            <span class="n">ax_w</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">box_h_w</span> <span class="o">+</span> <span class="mf">0.8</span><span class="p">,</span> <span class="s1">&#39;Hora a predecir&#39;</span><span class="p">,</span>
+                      <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span>
+                      <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">frame</span> <span class="o">&lt;=</span> <span class="mi">23</span><span class="p">:</span>
+        <span class="c1"># Past: one per frame, from t-1 (index 17) down to t-18 (index 0)</span>
+        <span class="n">past_idx</span> <span class="o">=</span> <span class="mi">17</span> <span class="o">-</span> <span class="p">(</span><span class="n">frame</span> <span class="o">-</span> <span class="mi">6</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">past_idx</span> <span class="o">&gt;=</span> <span class="mi">0</span> <span class="ow">and</span> <span class="n">past_idx</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">drawn_rects_w</span><span class="p">:</span>
+            <span class="n">_draw_box</span><span class="p">(</span><span class="n">past_idx</span><span class="p">,</span> <span class="n">COLOR_PAST</span><span class="p">,</span> <span class="s1">&#39;#CCCCCC&#39;</span><span class="p">)</span>
+    <span class="k">elif</span> <span class="n">frame</span> <span class="o">&lt;=</span> <span class="mi">41</span><span class="p">:</span>
+        <span class="c1"># Future: one per frame, from t+1 (index 19) to t+18 (index 36)</span>
+        <span class="n">fut_idx</span> <span class="o">=</span> <span class="mi">19</span> <span class="o">+</span> <span class="p">(</span><span class="n">frame</span> <span class="o">-</span> <span class="mi">24</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">fut_idx</span> <span class="o">&lt;=</span> <span class="mi">36</span> <span class="ow">and</span> <span class="n">fut_idx</span> <span class="ow">not</span> <span class="ow">in</span> <span class="n">drawn_rects_w</span><span class="p">:</span>
+            <span class="n">_draw_box</span><span class="p">(</span><span class="n">fut_idx</span><span class="p">,</span> <span class="n">COLOR_FUTURE</span><span class="p">,</span> <span class="s1">&#39;#85C1E9&#39;</span><span class="p">,</span> <span class="s1">&#39;#333366&#39;</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="c1"># Phase 4: show final label and arrow</span>
+        <span class="n">final_label_w</span><span class="o">.</span><span class="n">set_text</span><span class="p">(</span><span class="s1">&#39;37 × 79 = 2.923 valores de entrada&#39;</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">arrow_w</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+            <span class="n">x_c</span> <span class="o">=</span> <span class="mi">18</span> <span class="o">*</span> <span class="p">(</span><span class="n">box_w_w</span> <span class="o">+</span> <span class="mf">0.08</span><span class="p">)</span> <span class="o">+</span> <span class="n">box_w_w</span><span class="o">/</span><span class="mi">2</span>
+            <span class="n">arrow_w</span> <span class="o">=</span> <span class="n">ax_w</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;CSI predicho&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">box_h_w</span> <span class="o">+</span> <span class="mf">0.05</span><span class="p">),</span>
+                                    <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="n">x_c</span><span class="p">,</span> <span class="n">box_h_w</span> <span class="o">+</span> <span class="mf">2.0</span><span class="p">),</span>
+                                    <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span>
+                                    <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span>
+                                    <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">),</span>
+                                    <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.4&#39;</span><span class="p">,</span> <span class="n">fc</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span>
+                                              <span class="n">ec</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.92</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">1.5</span><span class="p">))</span>
+
+<span class="n">anim_w</span> <span class="o">=</span> <span class="n">animation</span><span class="o">.</span><span class="n">FuncAnimation</span><span class="p">(</span>
+    <span class="n">fig_w</span><span class="p">,</span> <span class="n">_update_w</span><span class="p">,</span> <span class="n">frames</span><span class="o">=</span><span class="mi">51</span><span class="p">,</span> <span class="n">interval</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">blit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="n">anim_w</span><span class="o">.</span><span class="n">to_jshtml</span><span class="p">()))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig_w</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Load NPZ and extract sequence for 2021-09-15 12:00 ───────────</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">data</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="n">NPZ_PATH</span><span class="p">,</span> <span class="n">allow_pickle</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">feature_vars</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">data</span><span class="p">[</span><span class="s1">&#39;feature_vars&#39;</span><span class="p">])</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
 </div>
 <div class="cell docutils container">
 <div class="cell_input docutils container">
@@ -870,77 +949,126 @@ cells.forEach(function(cell) {
 </div>
 <p><strong>Parámetros totales del modelo: 581,920</strong></p>
 <details>
-<summary>▶ Ver código</summary>
-</details><div class="cell docutils container">
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# ── Block 1: Input ────────────────────────────────────────────────
+X = torch.tensor(X_seq, dtype=torch.float32)
+X = X.unsqueeze(0)          # shape: (1, 37, 79)
+print(f"Forma de entrada : {X.shape}")
+...
+</pre>
+</details><div style="background:#2E86AB; color:white; padding:15px; border-radius:8px; margin:10px 0;">
+<h3 style="margin:0 0 8px 0;">① Entrada</h3>
+<p style="margin:0;">37 pasos × 79 variables = 2.923 valores</p>
+</div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 1: Input ────────────────────────────────────────────────</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">X_seq</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>          <span class="c1"># shape: (1, 37, 79)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forma de entrada : </span><span class="si">{</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Architecture block diagram: 5 blocks + output ────────────────</span>
-<span class="n">fig</span><span class="p">,</span> <span class="n">ax</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">16</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
-<span class="n">fig</span><span class="o">.</span><span class="n">patch</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_facecolor</span><span class="p">(</span><span class="s1">&#39;white&#39;</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.5</span><span class="p">,</span> <span class="mf">18.5</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="o">-</span><span class="mf">1.5</span><span class="p">,</span> <span class="mf">4.0</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">axis</span><span class="p">(</span><span class="s1">&#39;off&#39;</span><span class="p">)</span>
-
-<span class="n">blocks</span> <span class="o">=</span> <span class="p">[</span>
-    <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">0.0</span><span class="p">,</span>  <span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="s1">&#39;#E8E8E8&#39;</span><span class="p">,</span> <span class="s1">&#39;ec&#39;</span><span class="p">:</span> <span class="s1">&#39;#AAAAAA&#39;</span><span class="p">,</span> <span class="s1">&#39;title_color&#39;</span><span class="p">:</span> <span class="s1">&#39;#333333&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;Entrada&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;37 pasos × 79 variables</span><span class="se">\n</span><span class="s1">2.923 valores&#39;</span><span class="p">},</span>
-    <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">3.2</span><span class="p">,</span>  <span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="s1">&#39;#AED6F1&#39;</span><span class="p">,</span> <span class="s1">&#39;ec&#39;</span><span class="p">:</span> <span class="s1">&#39;#AAAAAA&#39;</span><span class="p">,</span> <span class="s1">&#39;title_color&#39;</span><span class="p">:</span> <span class="s1">&#39;#1A5276&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;LayerNorm&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;Normaliza</span><span class="se">\n</span><span class="s1">todas las variables</span><span class="se">\n</span><span class="s1">a la misma escala&#39;</span><span class="p">},</span>
-    <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">6.4</span><span class="p">,</span>  <span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="s1">&#39;#2E86AB&#39;</span><span class="p">,</span> <span class="s1">&#39;ec&#39;</span><span class="p">:</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>   <span class="s1">&#39;title_color&#39;</span><span class="p">:</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;BiLSTM × 3 capas&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;96 neuronas / dirección</span><span class="se">\n</span><span class="s1">Aprende microclima</span><span class="se">\n</span><span class="s1">del valle&#39;</span><span class="p">},</span>
-    <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">9.6</span><span class="p">,</span>  <span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="s1">&#39;#F0A500&#39;</span><span class="p">,</span> <span class="s1">&#39;ec&#39;</span><span class="p">:</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>   <span class="s1">&#39;title_color&#39;</span><span class="p">:</span> <span class="s1">&#39;#7B3F00&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;Dropout 25%&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;Apaga neuronas</span><span class="se">\n</span><span class="s1">al azar</span><span class="se">\n</span><span class="s1">Previene memorización&#39;</span><span class="p">},</span>
-    <span class="p">{</span><span class="s1">&#39;x&#39;</span><span class="p">:</span> <span class="mf">12.8</span><span class="p">,</span> <span class="s1">&#39;fc&#39;</span><span class="p">:</span> <span class="s1">&#39;#1B4332&#39;</span><span class="p">,</span> <span class="s1">&#39;ec&#39;</span><span class="p">:</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>   <span class="s1">&#39;title_color&#39;</span><span class="p">:</span> <span class="s1">&#39;white&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;title&#39;</span><span class="p">:</span> <span class="s1">&#39;Sigmoid&#39;</span><span class="p">,</span>
-     <span class="s1">&#39;text&#39;</span><span class="p">:</span> <span class="s1">&#39;Fuerza salida</span><span class="se">\n</span><span class="s1">entre 0 y 1</span><span class="se">\n</span><span class="s1">Restr. física CSI&#39;</span><span class="p">},</span>
-<span class="p">]</span>
-
-<span class="n">box_w</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">=</span> <span class="mf">2.8</span><span class="p">,</span> <span class="mf">2.0</span>
-<span class="k">for</span> <span class="n">i</span><span class="p">,</span> <span class="n">blk</span> <span class="ow">in</span> <span class="nb">enumerate</span><span class="p">(</span><span class="n">blocks</span><span class="p">):</span>
-    <span class="n">x</span> <span class="o">=</span> <span class="n">blk</span><span class="p">[</span><span class="s1">&#39;x&#39;</span><span class="p">]</span>
-    <span class="n">rect</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">((</span><span class="n">x</span><span class="p">,</span> <span class="mi">0</span><span class="p">),</span> <span class="n">box_w</span><span class="p">,</span> <span class="n">box_h</span><span class="p">,</span> <span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.1&#39;</span><span class="p">,</span>
-                          <span class="n">facecolor</span><span class="o">=</span><span class="n">blk</span><span class="p">[</span><span class="s1">&#39;fc&#39;</span><span class="p">],</span> <span class="n">edgecolor</span><span class="o">=</span><span class="n">blk</span><span class="p">[</span><span class="s1">&#39;ec&#39;</span><span class="p">],</span>
-                          <span class="n">linewidth</span><span class="o">=</span><span class="mf">1.5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">rect</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">box_h</span> <span class="o">-</span> <span class="mf">0.22</span><span class="p">,</span> <span class="n">blk</span><span class="p">[</span><span class="s1">&#39;title&#39;</span><span class="p">],</span>
-            <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mf">10.5</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span>
-            <span class="n">color</span><span class="o">=</span><span class="n">blk</span><span class="p">[</span><span class="s1">&#39;title_color&#39;</span><span class="p">],</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-    <span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span><span class="o">/</span><span class="mi">2</span><span class="p">,</span> <span class="n">box_h</span><span class="o">/</span><span class="mi">2</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">blk</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">],</span>
-            <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mf">8.5</span><span class="p">,</span>
-            <span class="n">color</span><span class="o">=</span><span class="n">blk</span><span class="p">[</span><span class="s1">&#39;title_color&#39;</span><span class="p">],</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">,</span> <span class="n">linespacing</span><span class="o">=</span><span class="mf">1.6</span><span class="p">)</span>
-    <span class="k">if</span> <span class="n">i</span> <span class="o">&lt;</span> <span class="nb">len</span><span class="p">(</span><span class="n">blocks</span><span class="p">)</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
-        <span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span> <span class="o">+</span> <span class="mf">0.32</span><span class="p">,</span> <span class="n">box_h</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
-                    <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="n">x</span> <span class="o">+</span> <span class="n">box_w</span> <span class="o">+</span> <span class="mf">0.02</span><span class="p">,</span> <span class="n">box_h</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
-                    <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">))</span>
-
-<span class="c1"># Output box</span>
-<span class="n">out_x</span> <span class="o">=</span> <span class="mf">16.2</span>
-<span class="n">out_rect</span> <span class="o">=</span> <span class="n">FancyBboxPatch</span><span class="p">((</span><span class="n">out_x</span><span class="p">,</span> <span class="mf">0.3</span><span class="p">),</span> <span class="mf">2.0</span><span class="p">,</span> <span class="mf">1.4</span><span class="p">,</span> <span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.15&#39;</span><span class="p">,</span>
-                          <span class="n">facecolor</span><span class="o">=</span><span class="n">COLOR_CENTER</span><span class="p">,</span> <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span>
-                          <span class="n">linewidth</span><span class="o">=</span><span class="mi">2</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">add_patch</span><span class="p">(</span><span class="n">out_rect</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">out_x</span> <span class="o">+</span> <span class="mf">1.0</span><span class="p">,</span> <span class="mf">1.0</span><span class="p">,</span> <span class="s1">&#39;CSI predicho</span><span class="se">\n</span><span class="s1">para las</span><span class="se">\n</span><span class="s1">12:00pm&#39;</span><span class="p">,</span>
-        <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mf">9.5</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span>
-        <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#7B3F00&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">4</span><span class="p">)</span>
-<span class="n">ax</span><span class="o">.</span><span class="n">annotate</span><span class="p">(</span><span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">xy</span><span class="o">=</span><span class="p">(</span><span class="n">out_x</span> <span class="o">-</span> <span class="mf">0.08</span><span class="p">,</span> <span class="n">box_h</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
-            <span class="n">xytext</span><span class="o">=</span><span class="p">(</span><span class="n">blocks</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">][</span><span class="s1">&#39;x&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="n">box_w</span> <span class="o">+</span> <span class="mf">0.05</span><span class="p">,</span> <span class="n">box_h</span><span class="o">/</span><span class="mi">2</span><span class="p">),</span>
-            <span class="n">arrowprops</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">arrowstyle</span><span class="o">=</span><span class="s1">&#39;-&gt;&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.0</span><span class="p">))</span>
-
-<span class="n">ax</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Arquitectura del modelo — de entrada a predicción&#39;</span><span class="p">,</span>
-             <span class="n">fontsize</span><span class="o">=</span><span class="mi">14</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">y</span><span class="o">=</span><span class="mf">0.98</span><span class="p">)</span>
-
-<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;graph7_architecture.png&#39;</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 1: Input ────────────────────────────────────────────────</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">X_seq</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">X</span> <span class="o">=</span> <span class="n">X</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span>          <span class="c1"># shape: (1, 37, 79)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forma de entrada : </span><span class="si">{</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Pasos          : </span><span class="si">{</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">  (ventana simétrica de 37 pasos)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Variables/paso : </span><span class="si">{</span><span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2">  (79 variables del GFS)&quot;</span><span class="p">)</span>
 </pre></div>
 </div>
 </div>
-<div class="cell_output docutils container">
-<img alt="_images/ef646c57d355c576f2b8706850d03824c9465a46eb14abd6cec2596900f94078.png" src="_images/ef646c57d355c576f2b8706850d03824c9465a46eb14abd6cec2596900f94078.png" />
+</div>
+<div style="background:#457B9D; color:white; padding:15px; border-radius:8px; margin:10px 0;">
+<h3 style="margin:0 0 8px 0;">② LayerNorm</h3>
+<p style="margin:0;">Normaliza todas las variables a la misma escala antes del LSTM</p>
+</div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 2: Layer Normalization ──────────────────────────────────</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="n">norm_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="mi">79</span><span class="p">)</span>        <span class="c1"># normalizes across the 79 feature dimension</span>
+<span class="n">X_normed</span>   <span class="o">=</span> <span class="n">norm_layer</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 2: Layer Normalization ──────────────────────────────────</span>
+<span class="kn">import</span><span class="w"> </span><span class="nn">torch.nn</span><span class="w"> </span><span class="k">as</span><span class="w"> </span><span class="nn">nn</span>
+<span class="n">norm_layer</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LayerNorm</span><span class="p">(</span><span class="mi">79</span><span class="p">)</span>        <span class="c1"># normalizes across the 79 feature dimension</span>
+<span class="n">X_normed</span>   <span class="o">=</span> <span class="n">norm_layer</span><span class="p">(</span><span class="n">X</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forma tras LayerNorm : </span><span class="si">{</span><span class="n">X_normed</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">  (igual — solo cambia la escala)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Media antes  : </span><span class="si">{</span><span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Media después: </span><span class="si">{</span><span class="n">X_normed</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">mean</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div style="background:#1D3557; color:white; padding:15px; border-radius:8px; margin:10px 0;">
+<h3 style="margin:0 0 8px 0;">③ BiLSTM × 3 capas</h3>
+<p style="margin:0;">Lee la secuencia hacia adelante Y hacia atrás · 96 neuronas por dirección</p>
+</div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 3: Bidirectional LSTM (3 layers, 96 hidden units) ──────</span>
+<span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">79</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">96</span><span class="p">,</span>
+               <span class="n">num_layers</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">bidirectional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 3: Bidirectional LSTM (3 layers, 96 hidden units) ──────</span>
+<span class="n">lstm</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">LSTM</span><span class="p">(</span><span class="n">input_size</span><span class="o">=</span><span class="mi">79</span><span class="p">,</span> <span class="n">hidden_size</span><span class="o">=</span><span class="mi">96</span><span class="p">,</span>
+               <span class="n">num_layers</span><span class="o">=</span><span class="mi">3</span><span class="p">,</span> <span class="n">batch_first</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">bidirectional</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">out_lstm</span><span class="p">,</span> <span class="n">_</span> <span class="o">=</span> <span class="n">lstm</span><span class="p">(</span><span class="n">X_normed</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forma de salida BiLSTM : </span><span class="si">{</span><span class="n">out_lstm</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  37 pasos × </span><span class="si">{</span><span class="n">out_lstm</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">2</span><span class="p">]</span><span class="si">}</span><span class="s2"> = 96 fwd + 96 bwd neuronas por paso&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div style="background:#E07A5F; color:white; padding:15px; border-radius:8px; margin:10px 0;">
+<h3 style="margin:0 0 8px 0;">④ Dropout 25%</h3>
+<p style="margin:0;">Apaga neuronas al azar durante el entrenamiento — previene memorización</p>
+</div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 4: Dropout — regularization to prevent overfitting ─────</span>
+<span class="n">dropout</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span>
+<span class="n">last_step</span> <span class="o">=</span> <span class="n">out_lstm</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>       <span class="c1"># take only the last time step</span>
+<span class="n">out_drop</span>  <span class="o">=</span> <span class="n">dropout</span><span class="p">(</span><span class="n">last_step</span><span class="p">)</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 4: Dropout — regularization to prevent overfitting ─────</span>
+<span class="n">dropout</span> <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Dropout</span><span class="p">(</span><span class="mf">0.25</span><span class="p">)</span>
+<span class="n">last_step</span> <span class="o">=</span> <span class="n">out_lstm</span><span class="p">[:,</span> <span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="p">:]</span>       <span class="c1"># take only the last time step</span>
+<span class="n">out_drop</span>  <span class="o">=</span> <span class="n">dropout</span><span class="p">(</span><span class="n">last_step</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Forma tras Dropout   : </span><span class="si">{</span><span class="n">out_drop</span><span class="o">.</span><span class="n">shape</span><span class="si">}</span><span class="s2">  (solo el último paso temporal)&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;  Neuronas activas   : ~</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">out_drop</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.75</span><span class="p">)</span><span class="si">}</span><span class="s2"> de </span><span class="si">{</span><span class="n">out_drop</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</div>
+<div style="background:#1B4332; color:white; padding:15px; border-radius:8px; margin:10px 0;">
+<h3 style="margin:0 0 8px 0;">⑤ Sigmoid → CSI predicho</h3>
+<p style="margin:0;">Fuerza la salida entre 0 y 1 — el CSI es un ratio, no puede ser negativo ni superar 1</p>
+</div><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 5: Linear layer + Sigmoid activation ───────────────────</span>
+<span class="n">fc</span>      <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">192</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>          <span class="c1"># 96*2 = 192 because bidirectional</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">csi_raw</span>  <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="n">out_drop</span><span class="p">)</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
+<div class="cell_input docutils container">
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Block 5: Linear layer + Sigmoid activation ───────────────────</span>
+<span class="n">fc</span>      <span class="o">=</span> <span class="n">nn</span><span class="o">.</span><span class="n">Linear</span><span class="p">(</span><span class="mi">192</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>          <span class="c1"># 96*2 = 192 because bidirectional</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">csi_raw</span>  <span class="o">=</span> <span class="n">fc</span><span class="p">(</span><span class="n">out_drop</span><span class="p">)</span>
+    <span class="n">csi_pred</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">sigmoid</span><span class="p">(</span><span class="n">csi_raw</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Salida lineal  (sin activar): </span><span class="si">{</span><span class="n">csi_raw</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Salida sigmoid (CSI predicho): </span><span class="si">{</span><span class="n">csi_pred</span><span class="o">.</span><span class="n">item</span><span class="p">()</span><span class="si">:</span><span class="s2">.4f</span><span class="si">}</span><span class="s2">  ← entre 0 y 1&quot;</span><span class="p">)</span>
+<span class="nb">print</span><span class="p">(</span><span class="sa">f</span><span class="s2">&quot;Valor real del modelo para 12:00pm del 15 sep 2021: ~0.882&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
 </div>
 </div>
 </section>
@@ -958,8 +1086,22 @@ cells.forEach(function(cell) {
 \[\text{GHI predicho (W/m²)} = \text{CSI predicho} \times \text{GHI cielo despejado (Ineichen)}\]</div>
 <p>La siguiente tabla muestra las 13 predicciones para el 15 de septiembre de 2021:</p>
 <details>
-<summary>▶ Ver código</summary>
-</details><div class="cell docutils container">
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# ── Load BiLSTM model ─────────────────────────────────────────────
+try:
+    from _4_LSTM_modules.NN_modules.BiLSTMRegressor import BiLSTMRegressor
+    model_bilstm = BiLSTMRegressor(
+...
+</pre>
+</details><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Load BiLSTM model ─────────────────────────────────────────────</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="kn">from</span><span class="w"> </span><span class="nn">_4_LSTM_modules.NN_modules.BiLSTMRegressor</span><span class="w"> </span><span class="kn">import</span> <span class="n">BiLSTMRegressor</span>
+    <span class="n">model_bilstm</span> <span class="o">=</span> <span class="n">BiLSTMRegressor</span><span class="p">(</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Load BiLSTM model ─────────────────────────────────────────────</span>
 <span class="k">try</span><span class="p">:</span>
@@ -1264,8 +1406,22 @@ Su medición de GHI representa la <strong>verdad de campo</strong> para evaluar 
 </div></blockquote>
 <p>La animación muestra primero la predicción del modelo, y luego la medición real:</p>
 <details>
-<summary>▶ Ver código</summary>
-</details><div class="cell docutils container">
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# ── Hourly grid and load SIATA GHI for 2021-09-15 ────────────────
+HOURS_IDX = pd.date_range('2021-09-15 06:00', '2021-09-15 18:00', freq='1h')
+def _align_hourly(timestamps, values):
+    """Align arbitrary time series to the daytime hourly grid."""
+...
+</pre>
+</details><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Hourly grid and load SIATA GHI for 2021-09-15 ────────────────</span>
+<span class="n">HOURS_IDX</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2021-09-15 06:00&#39;</span><span class="p">,</span> <span class="s1">&#39;2021-09-15 18:00&#39;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1h&#39;</span><span class="p">)</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_align_hourly</span><span class="p">(</span><span class="n">timestamps</span><span class="p">,</span> <span class="n">values</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;Align arbitrary time series to the daytime hourly grid.&quot;&quot;&quot;</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Hourly grid and load SIATA GHI for 2021-09-15 ────────────────</span>
 <span class="n">HOURS_IDX</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">date_range</span><span class="p">(</span><span class="s1">&#39;2021-09-15 06:00&#39;</span><span class="p">,</span> <span class="s1">&#39;2021-09-15 18:00&#39;</span><span class="p">,</span> <span class="n">freq</span><span class="o">=</span><span class="s1">&#39;1h&#39;</span><span class="p">)</span>
@@ -78378,8 +78534,22 @@ gg==\
 </table>
 </div>
 <details>
-<summary>▶ Ver código</summary>
-</details><div class="cell docutils container">
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# ── Load GFS CSI and convert to GHI for 2021-09-15 ───────────────
+try:
+    ds_g    = xr.open_dataset(GFS_CSI_FILE, engine='h5netcdf')
+    gfs_var = list(ds_g.data_vars)[0]
+...
+</pre>
+</details><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Load GFS CSI and convert to GHI for 2021-09-15 ───────────────</span>
+<span class="k">try</span><span class="p">:</span>
+    <span class="n">ds_g</span>    <span class="o">=</span> <span class="n">xr</span><span class="o">.</span><span class="n">open_dataset</span><span class="p">(</span><span class="n">GFS_CSI_FILE</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;h5netcdf&#39;</span><span class="p">)</span>
+    <span class="n">gfs_var</span> <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="n">ds_g</span><span class="o">.</span><span class="n">data_vars</span><span class="p">)[</span><span class="mi">0</span><span class="p">]</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
 <div class="cell_input docutils container">
 <div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Load GFS CSI and convert to GHI for 2021-09-15 ───────────────</span>
 <span class="k">try</span><span class="p">:</span>
@@ -206782,84 +206952,128 @@ QkhAAwAAAABQCAloAAAAAAAKIQENAAAAAEBWhH8AuJ6GcaahRlIAAAAASUVORK5CYII=\
 <p>Un RMSE 36% menor significa declaraciones más exactas → <strong>mayor rentabilidad para la planta solar</strong>.</p>
 <p>El gráfico siguiente muestra lo que recibiría Emergente cada mañana:</p>
 <details>
-<summary>▶ Ver código</summary>
-</details><div class="cell docutils container">
+<summary style="color:#2E86AB; cursor:pointer;">▶ Ver código</summary>
+<pre style="background:#1e1e1e; color:#d4d4d4; padding:10px; border-radius:5px; font-size:11px;">
+# ── Product delivery chart — 2 animated panels ───────────────────
+x_prod    = list(range(len(HOURS_IDX)))
+xlabels_p = [ts.strftime('%H:%M') for ts in HOURS_IDX]
+bilstm_p  = bilstm_vals.copy()
+...
+</pre>
+</details><div class="highlight-python notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Product delivery chart — 2 animated panels ───────────────────</span>
+<span class="n">x_prod</span>    <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">HOURS_IDX</span><span class="p">)))</span>
+<span class="n">xlabels_p</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">HOURS_IDX</span><span class="p">]</span>
+<span class="n">bilstm_p</span>  <span class="o">=</span> <span class="n">bilstm_vals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="c1"># ... (código completo disponible al expandir)</span>
+</pre></div>
+</div>
+<div class="cell docutils container">
 <div class="cell_input docutils container">
-<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Product delivery chart — 2 stacked panels ────────────────────</span>
+<div class="highlight-ipython3 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ── Product delivery chart — 2 animated panels ───────────────────</span>
 <span class="n">x_prod</span>    <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">range</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">HOURS_IDX</span><span class="p">)))</span>
 <span class="n">xlabels_p</span> <span class="o">=</span> <span class="p">[</span><span class="n">ts</span><span class="o">.</span><span class="n">strftime</span><span class="p">(</span><span class="s1">&#39;%H:%M&#39;</span><span class="p">)</span> <span class="k">for</span> <span class="n">ts</span> <span class="ow">in</span> <span class="n">HOURS_IDX</span><span class="p">]</span>
 <span class="n">bilstm_p</span>  <span class="o">=</span> <span class="n">bilstm_vals</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
 
-<span class="n">fig_prod</span><span class="p">,</span> <span class="p">(</span><span class="n">ax_top</span><span class="p">,</span> <span class="n">ax_bot</span><span class="p">)</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span>
-    <span class="mi">2</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">9</span><span class="p">),</span> <span class="n">gridspec_kw</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;height_ratios&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">2</span><span class="p">,</span> <span class="mf">1.2</span><span class="p">]})</span>
-
-<span class="c1"># ── TOP PANEL: hourly bars colored by CSI ────────────────────────</span>
+<span class="c1"># ── CSI values for coloring (from csi_pred_all aligned to HOURS_IDX) ─</span>
+<span class="n">sr_csi_p</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">Series</span><span class="p">(</span><span class="n">csi_pred_all</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="n">t_day_all</span><span class="p">)</span><span class="o">.</span><span class="n">reindex</span><span class="p">(</span><span class="n">HOURS_IDX</span><span class="p">)</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">values</span>
 <span class="n">bar_colors_p</span> <span class="o">=</span> <span class="p">[]</span>
-<span class="k">for</span> <span class="n">csi_v</span> <span class="ow">in</span> <span class="n">csi_pred_all</span><span class="p">:</span>
+<span class="k">for</span> <span class="n">csi_v</span> <span class="ow">in</span> <span class="n">sr_csi_p</span><span class="p">:</span>
     <span class="k">if</span> <span class="n">csi_v</span> <span class="o">&gt;</span> <span class="mf">0.7</span><span class="p">:</span>
-        <span class="n">bar_colors_p</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#F4D35E&#39;</span><span class="p">)</span>   <span class="c1"># sunny yellow</span>
+        <span class="n">bar_colors_p</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#F4D35E&#39;</span><span class="p">)</span>
     <span class="k">elif</span> <span class="n">csi_v</span> <span class="o">&gt;</span> <span class="mf">0.4</span><span class="p">:</span>
-        <span class="n">bar_colors_p</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#A8DADC&#39;</span><span class="p">)</span>   <span class="c1"># partly cloudy blue</span>
+        <span class="n">bar_colors_p</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#A8DADC&#39;</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="n">bar_colors_p</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#6C757D&#39;</span><span class="p">)</span>   <span class="c1"># cloudy gray</span>
+        <span class="n">bar_colors_p</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;#6C757D&#39;</span><span class="p">)</span>
 
-<span class="n">bars</span> <span class="o">=</span> <span class="n">ax_top</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">x_prod</span><span class="p">,</span> <span class="n">bilstm_p</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="n">bar_colors_p</span><span class="p">,</span>
-                  <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="c1"># ── ANIMATION 1: bars grow one by one ────────────────────────────</span>
+<span class="n">n_bars</span>   <span class="o">=</span> <span class="nb">len</span><span class="p">(</span><span class="n">x_prod</span><span class="p">)</span>
+<span class="n">y_max_p</span>  <span class="o">=</span> <span class="n">bilstm_p</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="mf">1.25</span>
 
-<span class="c1"># Value label on top of each bar</span>
-<span class="k">for</span> <span class="n">bar</span><span class="p">,</span> <span class="n">val</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">bars</span><span class="p">,</span> <span class="n">bilstm_p</span><span class="p">):</span>
-    <span class="k">if</span> <span class="n">val</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
-        <span class="n">ax_top</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">bar</span><span class="o">.</span><span class="n">get_x</span><span class="p">()</span> <span class="o">+</span> <span class="n">bar</span><span class="o">.</span><span class="n">get_width</span><span class="p">()</span> <span class="o">/</span> <span class="mi">2</span><span class="p">,</span>
-                    <span class="n">bar</span><span class="o">.</span><span class="n">get_height</span><span class="p">()</span> <span class="o">+</span> <span class="mi">10</span><span class="p">,</span> <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">val</span><span class="p">)</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
-                    <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">)</span>
+<span class="n">fig_b</span><span class="p">,</span> <span class="n">ax_b</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">5</span><span class="p">))</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">n_bars</span> <span class="o">-</span> <span class="mf">0.4</span><span class="p">)</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">y_max_p</span><span class="p">)</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">x_prod</span><span class="p">)</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">xlabels_p</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;GHI predicho (W/m²)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Producción solar hora por hora — 15 de septiembre 2021&#39;</span><span class="p">,</span>
+               <span class="n">fontsize</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
+<span class="n">ax_b</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span><span class="n">handles</span><span class="o">=</span><span class="p">[</span>
+    <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;#F4D35E&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Despejado (CSI &gt; 0.7)&#39;</span><span class="p">),</span>
+    <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;#A8DADC&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Parcialmente nublado (0.4–0.7)&#39;</span><span class="p">),</span>
+    <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;#6C757D&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Nublado (CSI &lt; 0.4)&#39;</span><span class="p">),</span>
+<span class="p">],</span> <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mf">9.5</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.92</span><span class="p">)</span>
 
-<span class="n">ax_top</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;GHI predicho (W/m²)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
-<span class="n">ax_top</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Producción solar hora por hora — 15 de septiembre 2021&#39;</span><span class="p">,</span>
-                 <span class="n">fontsize</span><span class="o">=</span><span class="mi">13</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
-<span class="n">ax_top</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">x_prod</span><span class="p">)</span>
-<span class="n">ax_top</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">xlabels_p</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
-<span class="n">ax_top</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">bilstm_p</span><span class="o">.</span><span class="n">max</span><span class="p">()</span> <span class="o">*</span> <span class="mf">1.22</span><span class="p">)</span>
-<span class="n">ax_top</span><span class="o">.</span><span class="n">legend</span><span class="p">(</span>
-    <span class="n">handles</span><span class="o">=</span><span class="p">[</span>
-        <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;#F4D35E&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Despejado (CSI &gt; 0.7)&#39;</span><span class="p">),</span>
-        <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;#A8DADC&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Parcialmente nublado (CSI 0.4–0.7)&#39;</span><span class="p">),</span>
-        <span class="n">mpatches</span><span class="o">.</span><span class="n">Patch</span><span class="p">(</span><span class="n">facecolor</span><span class="o">=</span><span class="s1">&#39;#6C757D&#39;</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;Nublado (CSI &lt; 0.4)&#39;</span><span class="p">),</span>
-    <span class="p">],</span>
-    <span class="n">loc</span><span class="o">=</span><span class="s1">&#39;upper left&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mf">9.5</span><span class="p">,</span> <span class="n">framealpha</span><span class="o">=</span><span class="mf">0.92</span><span class="p">)</span>
+<span class="n">bar_containers</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="n">val_labels</span>     <span class="o">=</span> <span class="p">[]</span>
 
-<span class="c1"># ── BOTTOM PANEL: cumulative energy curve ─────────────────────────</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_update_bars</span><span class="p">(</span><span class="n">frame</span><span class="p">):</span>
+    <span class="k">if</span> <span class="n">frame</span> <span class="o">&lt;</span> <span class="n">n_bars</span><span class="p">:</span>
+        <span class="n">bar</span> <span class="o">=</span> <span class="n">ax_b</span><span class="o">.</span><span class="n">bar</span><span class="p">(</span><span class="n">x_prod</span><span class="p">[</span><span class="n">frame</span><span class="p">],</span> <span class="n">bilstm_p</span><span class="p">[</span><span class="n">frame</span><span class="p">],</span>
+                       <span class="n">color</span><span class="o">=</span><span class="n">bar_colors_p</span><span class="p">[</span><span class="n">frame</span><span class="p">],</span>
+                       <span class="n">edgecolor</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">linewidth</span><span class="o">=</span><span class="mf">0.6</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+        <span class="n">bar_containers</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">bar</span><span class="p">)</span>
+        <span class="k">if</span> <span class="n">bilstm_p</span><span class="p">[</span><span class="n">frame</span><span class="p">]</span> <span class="o">&gt;</span> <span class="mi">20</span><span class="p">:</span>
+            <span class="n">lbl</span> <span class="o">=</span> <span class="n">ax_b</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x_prod</span><span class="p">[</span><span class="n">frame</span><span class="p">],</span>
+                            <span class="n">bilstm_p</span><span class="p">[</span><span class="n">frame</span><span class="p">]</span> <span class="o">+</span> <span class="mi">12</span><span class="p">,</span>
+                            <span class="sa">f</span><span class="s1">&#39;</span><span class="si">{</span><span class="nb">int</span><span class="p">(</span><span class="n">bilstm_p</span><span class="p">[</span><span class="n">frame</span><span class="p">])</span><span class="si">}</span><span class="s1">&#39;</span><span class="p">,</span>
+                            <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">9</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#333333&#39;</span><span class="p">)</span>
+            <span class="n">val_labels</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">lbl</span><span class="p">)</span>
+
+<span class="n">anim_bars</span> <span class="o">=</span> <span class="n">animation</span><span class="o">.</span><span class="n">FuncAnimation</span><span class="p">(</span>
+    <span class="n">fig_b</span><span class="p">,</span> <span class="n">_update_bars</span><span class="p">,</span> <span class="n">frames</span><span class="o">=</span><span class="n">n_bars</span> <span class="o">+</span> <span class="mi">2</span><span class="p">,</span>
+    <span class="n">interval</span><span class="o">=</span><span class="mi">300</span><span class="p">,</span> <span class="n">blit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="n">anim_bars</span><span class="o">.</span><span class="n">to_jshtml</span><span class="p">()))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig_b</span><span class="p">)</span>
+
+<span class="c1"># ── ANIMATION 2: cumulative energy line draws left to right ──────</span>
 <span class="n">cumulative_ghi</span> <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">cumsum</span><span class="p">(</span><span class="n">bilstm_p</span><span class="p">)</span>
 <span class="n">total_energy</span>   <span class="o">=</span> <span class="n">cumulative_ghi</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>
+<span class="n">y_max_cum</span>      <span class="o">=</span> <span class="n">total_energy</span> <span class="o">*</span> <span class="mf">1.20</span>
 
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span><span class="n">x_prod</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cumulative_ghi</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.35</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#F4D35E&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">plot</span><span class="p">(</span><span class="n">x_prod</span><span class="p">,</span> <span class="n">cumulative_ghi</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.5</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="n">x_prod</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.3</span><span class="p">,</span> <span class="n">cumulative_ghi</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">],</span>
-            <span class="sa">f</span><span class="s1">&#39;Total: </span><span class="si">{</span><span class="n">total_energy</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> Wh/m²&#39;</span><span class="p">,</span>
-            <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span>
-            <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.4&#39;</span><span class="p">,</span> <span class="n">fc</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span> <span class="n">ec</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.92</span><span class="p">))</span>
+<span class="n">fig_c</span><span class="p">,</span> <span class="n">ax_c</span> <span class="o">=</span> <span class="n">plt</span><span class="o">.</span><span class="n">subplots</span><span class="p">(</span><span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">14</span><span class="p">,</span> <span class="mi">4</span><span class="p">))</span>
+<span class="n">ax_c</span><span class="o">.</span><span class="n">set_xlim</span><span class="p">(</span><span class="o">-</span><span class="mf">0.3</span><span class="p">,</span> <span class="n">n_bars</span> <span class="o">-</span> <span class="mf">0.7</span><span class="p">)</span>
+<span class="n">ax_c</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">y_max_cum</span><span class="p">)</span>
+<span class="n">ax_c</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">x_prod</span><span class="p">)</span>
+<span class="n">ax_c</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">xlabels_p</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
+<span class="n">ax_c</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Energía acumulada (Wh/m²)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
+<span class="n">ax_c</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Energía solar acumulada en el día&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">,</span> <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">)</span>
 
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">set_ylabel</span><span class="p">(</span><span class="s1">&#39;Energía acumulada (Wh/m²)&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">)</span>
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">set_title</span><span class="p">(</span><span class="s1">&#39;Energía solar acumulada en el día&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">12</span><span class="p">)</span>
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">set_xticks</span><span class="p">(</span><span class="n">x_prod</span><span class="p">)</span>
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">set_xticklabels</span><span class="p">(</span><span class="n">xlabels_p</span><span class="p">,</span> <span class="n">rotation</span><span class="o">=</span><span class="mi">30</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">)</span>
-<span class="n">ax_bot</span><span class="o">.</span><span class="n">set_ylim</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">total_energy</span> <span class="o">*</span> <span class="mf">1.18</span><span class="p">)</span>
+<span class="n">line_c</span><span class="p">,</span> <span class="o">=</span> <span class="n">ax_c</span><span class="o">.</span><span class="n">plot</span><span class="p">([],</span> <span class="p">[],</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span> <span class="n">lw</span><span class="o">=</span><span class="mf">2.8</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">3</span><span class="p">)</span>
+<span class="n">fill_c</span>  <span class="o">=</span> <span class="p">[</span><span class="kc">None</span><span class="p">]</span>
+<span class="n">annot_c</span> <span class="o">=</span> <span class="n">ax_c</span><span class="o">.</span><span class="n">text</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="mi">0</span><span class="p">,</span> <span class="s1">&#39;&#39;</span><span class="p">,</span> <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;right&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;bottom&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">11</span><span class="p">,</span>
+                    <span class="n">fontweight</span><span class="o">=</span><span class="s1">&#39;bold&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span>
+                    <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.4&#39;</span><span class="p">,</span> <span class="n">fc</span><span class="o">=</span><span class="s1">&#39;white&#39;</span><span class="p">,</span>
+                              <span class="n">ec</span><span class="o">=</span><span class="s1">&#39;#CC8800&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.0</span><span class="p">))</span>
 
-<span class="c1"># ── Footer text box ───────────────────────────────────────────────</span>
-<span class="n">fig_prod</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
-    <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.01</span><span class="p">,</span>
-    <span class="s1">&#39;Este pronóstico se entrega a las 4:00 AM y permite a Emergente declarar</span><span class="se">\n</span><span class="s1">&#39;</span>
-    <span class="s1">&#39;su oferta energética antes de las 8:00 AM en el mercado mayorista colombiano — XM&#39;</span><span class="p">,</span>
-    <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">va</span><span class="o">=</span><span class="s1">&#39;top&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;italic&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">,</span>
-    <span class="n">bbox</span><span class="o">=</span><span class="nb">dict</span><span class="p">(</span><span class="n">boxstyle</span><span class="o">=</span><span class="s1">&#39;round,pad=0.5&#39;</span><span class="p">,</span> <span class="n">fc</span><span class="o">=</span><span class="s1">&#39;#F8F9FA&#39;</span><span class="p">,</span> <span class="n">ec</span><span class="o">=</span><span class="s1">&#39;#CCCCCC&#39;</span><span class="p">,</span> <span class="n">alpha</span><span class="o">=</span><span class="mf">0.9</span><span class="p">))</span>
+<span class="k">def</span><span class="w"> </span><span class="nf">_update_cum</span><span class="p">(</span><span class="n">frame</span><span class="p">):</span>
+    <span class="n">k</span> <span class="o">=</span> <span class="nb">min</span><span class="p">(</span><span class="n">frame</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">n_bars</span><span class="p">)</span>
+    <span class="n">line_c</span><span class="o">.</span><span class="n">set_data</span><span class="p">(</span><span class="n">x_prod</span><span class="p">[:</span><span class="n">k</span><span class="p">],</span> <span class="n">cumulative_ghi</span><span class="p">[:</span><span class="n">k</span><span class="p">])</span>
+    <span class="k">if</span> <span class="n">fill_c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">fill_c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">remove</span><span class="p">()</span>
+    <span class="n">fill_c</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span> <span class="o">=</span> <span class="n">ax_c</span><span class="o">.</span><span class="n">fill_between</span><span class="p">(</span>
+        <span class="n">x_prod</span><span class="p">[:</span><span class="n">k</span><span class="p">],</span> <span class="mi">0</span><span class="p">,</span> <span class="n">cumulative_ghi</span><span class="p">[:</span><span class="n">k</span><span class="p">],</span>
+        <span class="n">alpha</span><span class="o">=</span><span class="mf">0.30</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#F4D35E&#39;</span><span class="p">,</span> <span class="n">zorder</span><span class="o">=</span><span class="mi">2</span><span class="p">)</span>
+    <span class="k">if</span> <span class="n">frame</span> <span class="o">&gt;=</span> <span class="n">n_bars</span> <span class="o">-</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="n">annot_c</span><span class="o">.</span><span class="n">set_text</span><span class="p">(</span><span class="sa">f</span><span class="s1">&#39;Total: </span><span class="si">{</span><span class="n">total_energy</span><span class="si">:</span><span class="s1">.0f</span><span class="si">}</span><span class="s1"> Wh/m²&#39;</span><span class="p">)</span>
+        <span class="n">annot_c</span><span class="o">.</span><span class="n">set_position</span><span class="p">((</span><span class="n">x_prod</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span> <span class="o">-</span> <span class="mf">0.2</span><span class="p">,</span> <span class="n">cumulative_ghi</span><span class="p">[</span><span class="o">-</span><span class="mi">1</span><span class="p">]))</span>
+        <span class="n">annot_c</span><span class="o">.</span><span class="n">get_bbox_patch</span><span class="p">()</span><span class="o">.</span><span class="n">set_alpha</span><span class="p">(</span><span class="mf">0.92</span><span class="p">)</span>
+    <span class="k">return</span> <span class="n">line_c</span><span class="p">,</span>
 
-<span class="n">fig_prod</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">(</span><span class="n">rect</span><span class="o">=</span><span class="p">[</span><span class="mi">0</span><span class="p">,</span> <span class="mf">0.05</span><span class="p">,</span> <span class="mi">1</span><span class="p">,</span> <span class="mi">1</span><span class="p">])</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">savefig</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">os</span><span class="o">.</span><span class="n">getcwd</span><span class="p">(),</span> <span class="s1">&#39;graph15_product.png&#39;</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">120</span><span class="p">,</span> <span class="n">bbox_inches</span><span class="o">=</span><span class="s1">&#39;tight&#39;</span><span class="p">)</span>
-<span class="n">plt</span><span class="o">.</span><span class="n">show</span><span class="p">()</span>
+<span class="n">anim_cum</span> <span class="o">=</span> <span class="n">animation</span><span class="o">.</span><span class="n">FuncAnimation</span><span class="p">(</span>
+    <span class="n">fig_c</span><span class="p">,</span> <span class="n">_update_cum</span><span class="p">,</span> <span class="n">frames</span><span class="o">=</span><span class="n">n_bars</span> <span class="o">+</span> <span class="mi">3</span><span class="p">,</span>
+    <span class="n">interval</span><span class="o">=</span><span class="mi">250</span><span class="p">,</span> <span class="n">blit</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span> <span class="n">repeat</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+
+<span class="n">plt</span><span class="o">.</span><span class="n">tight_layout</span><span class="p">()</span>
+<span class="n">fig_c</span><span class="o">.</span><span class="n">text</span><span class="p">(</span>
+    <span class="mf">0.5</span><span class="p">,</span> <span class="o">-</span><span class="mf">0.04</span><span class="p">,</span>
+    <span class="s1">&#39;Este pronóstico se entrega a las 4:00 AM · Emergente declara su oferta a XM antes de las 8:00 AM&#39;</span><span class="p">,</span>
+    <span class="n">ha</span><span class="o">=</span><span class="s1">&#39;center&#39;</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">10</span><span class="p">,</span> <span class="n">style</span><span class="o">=</span><span class="s1">&#39;italic&#39;</span><span class="p">,</span> <span class="n">color</span><span class="o">=</span><span class="s1">&#39;#555555&#39;</span><span class="p">)</span>
+<span class="n">display</span><span class="p">(</span><span class="n">HTML</span><span class="p">(</span><span class="n">anim_cum</span><span class="o">.</span><span class="n">to_jshtml</span><span class="p">()))</span>
+<span class="n">plt</span><span class="o">.</span><span class="n">close</span><span class="p">(</span><span class="n">fig_c</span><span class="p">)</span>
 </pre></div>
 </div>
-</div>
-<div class="cell_output docutils container">
-<img alt="_images/ff2b3c408c0c87ca7f21f694722855c3aaa286f0dd2ea711333040ef7920f575.png" src="_images/ff2b3c408c0c87ca7f21f694722855c3aaa286f0dd2ea711333040ef7920f575.png" />
 </div>
 </div>
 </section>
