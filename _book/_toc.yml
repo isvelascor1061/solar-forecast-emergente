@@ -1,4 +1,4 @@
 format: jb-book
 root: intro
 chapters:
-- file: demo_climate_week_v2
+- file: demo_climate_week_web
